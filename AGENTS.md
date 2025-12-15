@@ -229,6 +229,70 @@ AI agents **MUST NOT**:
 
 ---
 
+## Documentation Guidelines (MANDATORY)
+
+### When to Update Documentation
+
+**ALWAYS update documentation when**:
+- Adding/modifying configuration files (application.yml, docker-compose.yml)
+- Completing a development phase from DEVELOPMENT_PLAN.md
+- Changing dependency versions in pom.xml
+- Adding/removing features or endpoints
+- Modifying database schema
+- Changing environment variables or setup requirements
+
+### Documentation Files to Maintain
+
+- **README.md**: Project overview, quick start, implementation status
+- **SETUP.md**: Step-by-step setup guide, must reflect actual configuration
+- **ARCHITECTURE.md**: Technical architecture, must match current stack
+- **DEVELOPMENT_PLAN.md**: Reference only, do not modify unless explicitly requested
+
+### Documentation Writing Style
+
+**DO**:
+- Write clear, concise, actionable content
+- Use bullet points and short paragraphs
+- Include code examples when helpful
+- Update version numbers and completion status
+- Use emojis sparingly (✅ ❌ ⚠️ only for status indicators)
+
+**DON'T**:
+- Write verbose explanations or essays
+- Repeat information already present elsewhere
+- Add unnecessary comments or obvious statements
+- Create separate documentation files unless requested
+- Over-document trivial changes
+
+### Documentation Update Process
+
+1. Make code/configuration changes
+2. Identify affected documentation files
+3. Update documentation in the same commit
+4. Verify consistency across all docs
+5. Mark completed phases in README.md
+
+### Examples
+
+**❌ BAD - Verbose**:
+```markdown
+In this section, we will discuss and explain in detail how to configure
+the application properties file. This is a very important step because
+without proper configuration, the application will not be able to start...
+```
+
+**✅ GOOD - Concise**:
+```markdown
+## Configuration
+
+Update `application.yml`:
+- Database connection (PostgreSQL)
+- Gemini API key via `GEMINI_API_KEY` env variable
+- RAG parameters (chunk size: 500, overlap: 50)
+```
+
+---
+
 ## Quick Reference
 
 ### Common Patterns

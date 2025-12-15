@@ -297,7 +297,7 @@ Genera rappresentazioni vettoriali:
 ### Google Gemini API
 **Modelli utilizzati**:
 - `text-embedding-004`: generazione embeddings (768 dimensioni)
-- `gemini-pro`: generazione risposte chat
+- `gemini-2.0-flash-exp`: generazione risposte chat (latest model)
 
 **Free Tier Limits**:
 - 2M token input/giorno
@@ -357,11 +357,33 @@ Framework per semplificare integrazione LLM:
 ## Monitoring & Logging
 
 ### Logging Strategy
-```properties
-logging.level.com.example.ao_wiki_chat=DEBUG
-logging.level.dev.langchain4j=INFO
-logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
+```yaml
+spring:
+  output:
+    ansi:
+      enabled: ALWAYS  # Colored logs in console
+
+logging:
+  level:
+    root: INFO
+    com.example.ao_wiki_chat: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    dev.langchain4j: DEBUG
+  pattern:
+    # Colored pattern with blue timestamps, highlighted levels, cyan logger names
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){blue} %clr([%5p]){highlight} %clr(%-40.40logger{39}){cyan} : %m%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 ```
+
+**Log Colors**:
+- 🔴 ERROR in red
+- 🟡 WARN in yellow
+- 🟢 INFO in green
+- ⚪ DEBUG in white
+- 🔵 Timestamps in blue
+- 🔷 Logger names in cyan
 
 ### Metriche da Monitorare
 - Latenza vector search (target: <100ms)

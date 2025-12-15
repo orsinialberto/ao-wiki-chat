@@ -225,9 +225,9 @@ docker-compose ps
 ## 📝 Implementation Status
 
 - [x] **Phase 1.1**: Docker and PostgreSQL Configuration ✅
-- [x] Phase 1.2: Maven and Dependencies Configuration
-- [ ] Phase 1.3: Application Properties
-- [ ] Phase 1.4: Gemini API Setup
+- [x] **Phase 1.2**: Maven and Dependencies Configuration ✅
+- [x] **Phase 1.3**: Application Configuration (application.yml) ✅
+- [x] **Phase 1.4**: Gemini API Setup ✅
 - [ ] Phase 2: Model and Database Layer
 - [ ] Phase 3: Integration Layer
 - [ ] Phase 4: Business Logic
@@ -248,6 +248,6 @@ To contribute to the project, check the guidelines in [AGENTS.md](AGENTS.md).
 
 ---
 
-**Version**: 0.1.0 (Phase 1.1 completed)  
+**Version**: 0.2.0 (Phase 1 completed)  
 **Last Updated**: December 2025
 

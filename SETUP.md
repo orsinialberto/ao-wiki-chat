@@ -206,39 +206,39 @@ Aggiorna `pom.xml` con le seguenti dipendenze:
     <dependency>
         <groupId>com.pgvector</groupId>
         <artifactId>pgvector</artifactId>
-        <version>0.1.4</version>
+        <version>0.1.6</version>
     </dependency>
     
-    <!-- LangChain4j -->
+    <!-- LangChain4j + Gemini -->
     <dependency>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j</artifactId>
-        <version>0.27.1</version>
+        <version>0.36.2</version>
     </dependency>
     
     <dependency>
         <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-        <version>0.27.1</version>
+        <artifactId>langchain4j-google-ai-gemini</artifactId>
+        <version>0.36.2</version>
     </dependency>
     
     <!-- Document Parsers -->
     <dependency>
         <groupId>org.apache.pdfbox</groupId>
         <artifactId>pdfbox</artifactId>
-        <version>3.0.1</version>
+        <version>3.0.3</version>
     </dependency>
     
     <dependency>
         <groupId>org.jsoup</groupId>
         <artifactId>jsoup</artifactId>
-        <version>1.17.2</version>
+        <version>1.18.1</version>
     </dependency>
     
     <dependency>
         <groupId>org.commonmark</groupId>
         <artifactId>commonmark</artifactId>
-        <version>0.22.0</version>
+        <version>0.24.0</version>
     </dependency>
     
     <!-- Lombok (opzionale) -->
@@ -259,55 +259,111 @@ Aggiorna `pom.xml` con le seguenti dipendenze:
 
 ---
 
-## Step 5: Configurazione application.properties
+## Step 5: Configurazione application.yml
 
-Aggiorna `src/main/resources/application.properties`:
+Crea/aggiorna `src/main/resources/application.yml`:
 
-```properties
-# Application
-spring.application.name=wikichat
-server.port=8080
+```yaml
+spring:
+  application:
+    name: ao-wiki-chat
+  output:
+    ansi:
+      enabled: ALWAYS  # Enable colored console logs
+  datasource:
+    url: jdbc:postgresql://localhost:5432/wikichat
+    username: wikichat_user
+    password: wikichat_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+  jpa:
+    # Note: dialect auto-detected from driver (no need to specify)
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false  # Best practice for REST APIs
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+  task:
+    execution:
+      pool:
+        core-size: 4
+        max-size: 8
+        queue-capacity: 100
+      thread-name-prefix: doc-processor-
 
-# Database PostgreSQL
-spring.datasource.url=jdbc:postgresql://localhost:5432/wikichat
-spring.datasource.username=wikichat_user
-spring.datasource.password=wikichat_password
-spring.datasource.driver-class-name=org.postgresql.Driver
+server:
+  port: 8080
 
-# JPA Configuration
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-spring.jpa.properties.hibernate.format_sql=true
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}
+  chat:
+    model: gemini-2.0-flash-exp
+    temperature: 0.7
+    max-tokens: 2048
+  embedding:
+    model: text-embedding-004
+    dimension: 768
+  rate-limit:
+    requests-per-minute: 50
+    tokens-per-day: 2000000
 
-# File Upload
-spring.servlet.multipart.enabled=true
-spring.servlet.multipart.max-file-size=50MB
-spring.servlet.multipart.max-request-size=50MB
+upload:
+  allowed-types: application/pdf,text/markdown,text/html,text/plain
 
-# Google Gemini API
-gemini.api.key=${GEMINI_API_KEY}
-gemini.model.name=gemini-pro
-gemini.embedding.model=text-embedding-004
-gemini.max.tokens=2048
-gemini.temperature=0.7
+rag:
+  chunk:
+    size: 500
+    overlap: 50
+  search:
+    top-k: 5
+    similarity-threshold: 0.7
+  vector:
+    dimension: 768
+    distance-metric: cosine
 
-# RAG Configuration
-rag.chunk.size=500
-rag.chunk.overlap=50
-rag.top.k.results=5
-rag.similarity.threshold=0.7
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
 
-# Async Processing
-spring.task.execution.pool.core-size=4
-spring.task.execution.pool.max-size=8
-spring.task.execution.pool.queue-capacity=100
-
-# Logging
-logging.level.com.example.ao_wiki_chat=DEBUG
-logging.level.dev.langchain4j=INFO
-logging.level.org.springframework.web=INFO
+logging:
+  level:
+    root: INFO
+    com.example.ao_wiki_chat: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    dev.langchain4j: DEBUG
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){blue} %clr([%5p]){highlight} %clr(%-40.40logger{39}){cyan} : %m%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 ```
+
+**Note importanti**:
+- ✅ Formato YAML (più leggibile di .properties)
+- ✅ ANSI colors abilitati per log colorati in console
+- ✅ Dialect PostgreSQL auto-rilevato (no warning)
+- ✅ `open-in-view: false` per best practice REST API
+- ✅ HikariCP connection pool configurato
+- ✅ Actuator endpoints per health checks
 
 ---
 
@@ -500,7 +556,7 @@ ao-wiki-chat/
     │   │   ├── integration/    ⏳ Da creare
     │   │   └── exception/      ⏳ Da creare
     │   └── resources/
-    │       └── application.properties  ⏳ Da aggiornare
+    │       └── application.yml         ✅ Configurato
     └── test/
 ```
 
