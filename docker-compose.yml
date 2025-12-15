@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: wikichat-postgres
+    environment:
+      POSTGRES_DB: wikichat
+      POSTGRES_USER: wikichat_user
+      POSTGRES_PASSWORD: wikichat_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wikichat_user -d wikichat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wikichat-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  wikichat-network:
+    driver: bridge
+
