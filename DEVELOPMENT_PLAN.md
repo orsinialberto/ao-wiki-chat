@@ -17,11 +17,11 @@ Sistema RAG (Retrieval-Augmented Generation) che permette di caricare documenti 
   - Creare indici vettoriali HNSW per performance
 - Avviare container e verificare connessione
 
-### 1.2 Configurazione Maven e Dipendenze
+### 1.2 Configurazione Maven e Dipendenze 
 Aggiornare `pom.xml` con tutte le dipendenze necessarie:
 - Spring Boot Web, Data JPA, Validation
 - PostgreSQL driver + pgvector-java
-- LangChain4j + vertex-ai-gemini
+- LangChain4j + google-ai-gemini (tier gratuito Google AI Studio)
 - Parser: PDFBox, Jsoup, CommonMark
 - Lombok per ridurre boilerplate
 
@@ -107,8 +107,8 @@ Creare package `integration.gemini`:
 **`GeminiConfig.java`**: Configurazione LangChain4j
 ```java
 @Configuration
-- Bean per VertexAiGeminiChatModel
-- Bean per VertexAiGeminiEmbeddingModel
+- Bean per GoogleAiGeminiChatModel
+- Bean per GoogleAiGeminiEmbeddingModel
 - Caricamento API key e parametri da properties
 ```
 
