@@ -1,0 +1,91 @@
+spring:
+  application:
+    name: ao-wiki-chat
+  output:
+    ansi:
+      enabled: ALWAYS
+  datasource:
+    url: jdbc:postgresql://localhost:5432/wikichat
+    username: wikichat_user
+    password: wikichat_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000  
+  jpa:
+    open-in-view: false 
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+  task:
+    execution:
+      pool:
+        core-size: 4
+        max-size: 8
+        queue-capacity: 100
+      thread-name-prefix: doc-processor-
+
+server:
+  port: 8080
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}
+  chat:
+    model: gemini-2.0-flash-exp
+    temperature: 0.7
+    max-tokens: 2048
+  embedding:
+    model: text-embedding-004
+    dimension: 768
+  rate-limit:
+    requests-per-minute: 50
+    tokens-per-day: 2000000
+
+upload:
+  allowed-types: application/pdf,text/markdown,text/html,text/plain
+
+rag:
+  chunk:
+    size: 500
+    overlap: 50
+  search:
+    top-k: 5
+    similarity-threshold: 0.7
+  vector:
+    dimension: 768
+    distance-metric: cosine
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: INFO
+    com.example.ao_wiki_chat: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    dev.langchain4j: DEBUG
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){blue} %clr([%5p]){highlight} %clr(%-40.40logger{39}){cyan} : %m%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
