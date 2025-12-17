@@ -21,7 +21,7 @@ Sistema RAG (Retrieval-Augmented Generation) che permette di caricare documenti 
 Aggiornare `pom.xml` con tutte le dipendenze necessarie:
 - Spring Boot Web, Data JPA, Validation
 - PostgreSQL driver + pgvector-java
-- LangChain4j + google-ai-gemini (tier gratuito Google AI Studio)
+- LangChain4j + vertex-ai-gemini
 - Parser: PDFBox, Jsoup, CommonMark
 - Lombok per ridurre boilerplate
 
@@ -107,8 +107,8 @@ Creare package `integration.gemini`:
 **`GeminiConfig.java`**: Configurazione LangChain4j
 ```java
 @Configuration
-- Bean per GoogleAiGeminiChatModel
-- Bean per GoogleAiGeminiEmbeddingModel
+- Bean per VertexAiGeminiChatModel
+- Bean per VertexAiGeminiEmbeddingModel
 - Caricamento API key e parametri da properties
 ```
 

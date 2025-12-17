@@ -228,7 +228,9 @@ docker-compose ps
 - [x] **Phase 1.2**: Maven and Dependencies Configuration ✅
 - [x] **Phase 1.3**: Application Configuration (application.yml) ✅
 - [x] **Phase 1.4**: Gemini API Setup ✅
-- [ ] Phase 2: Model and Database Layer
+- [x] **Phase 2.1**: JPA Entities (Document, Chunk, Conversation, Message) ✅
+- [x] **Phase 2.2**: Custom Types (VectorAttributeConverter for pgvector) ✅
+- [ ] Phase 2.3: Repositories
 - [ ] Phase 3: Integration Layer
 - [ ] Phase 4: Business Logic
 - [ ] Phase 5: REST API
@@ -248,6 +250,6 @@ To contribute to the project, check the guidelines in [AGENTS.md](AGENTS.md).
 
 ---
 
-**Version**: 0.2.0 (Phase 1 completed)  
+**Version**: 0.3.0 (Phase 2.1-2.2 completed)  
 **Last Updated**: December 2025
 
