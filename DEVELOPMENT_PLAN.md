@@ -327,8 +327,8 @@ Aggiornare `docker-compose.yml`:
 ## Checklist Progresso
 
 Ogni fase può essere testata indipendentemente:
-- [ ] Fase 1: Container PostgreSQL accessibile, ping database OK
-- [ ] Fase 2: Application si avvia, tabelle create automaticamente
+- [x] Fase 1: Container PostgreSQL accessibile, ping database OK ✅
+- [x] Fase 2: Application si avvia, tabelle create automaticamente ✅
 - [ ] Fase 3: Parser estraggono testo, Gemini API risponde
 - [ ] Fase 4: Upload documento → chunks salvati con embeddings
 - [ ] Fase 5: Endpoint REST rispondono, query funziona end-to-end

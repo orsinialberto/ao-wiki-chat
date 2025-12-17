@@ -266,11 +266,17 @@ AI agents **MUST NOT**:
 
 ### Documentation Update Process
 
+**CRITICAL**: After completing ANY development phase, ALWAYS update checklists in markdown files.
+
 1. Make code/configuration changes
 2. Identify affected documentation files
 3. Update documentation in the same commit
 4. Verify consistency across all docs
-5. Mark completed phases in README.md
+5. **UPDATE CHECKLISTS**: Mark completed phases/tasks with ✅ in:
+   - `README.md` (Implementation Status section)
+   - `DEVELOPMENT_PLAN.md` (Checklist Progresso section)
+   - Any other project-specific progress tracking files
+6. Commit documentation updates together with code changes
 
 ### Examples
 
@@ -336,3 +342,4 @@ public CompletableFuture<Result> processAsync(UUID id) {
 - [ ] Exception handling is complete
 - [ ] No unused imports
 - [ ] API keys not hardcoded (use environment variables)
+- [ ] **Documentation checklists updated** (README.md, DEVELOPMENT_PLAN.md)
