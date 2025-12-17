@@ -160,14 +160,20 @@ calculateTotalWhenDiscountAppliedReturnsReducedTotal()
 
 ## Lombok (If Present)
 
+**Note**: This project uses Java 25 and **does not use Lombok for logging** due to compatibility issues. Use standard SLF4J loggers:
+```java
+private static final Logger log = LoggerFactory.getLogger(ClassName.class);
+```
+
 **Allowed**:
 - `@Getter`
 - `@Value`
 - `@Builder`
 - `@Data` **only for DTOs** (not for JPA Entities)
-- `@RequiredArgsConstructor` for constructor injection
 
 **Avoid**:
+- `@Slf4j` (not compatible with Java 25)
+- `@RequiredArgsConstructor` in parser classes (use explicit constructor)
 - `@Data` on JPA Entities (causes issues with lazy loading)
 - uncontrolled `@EqualsAndHashCode` on entities with relationships
 

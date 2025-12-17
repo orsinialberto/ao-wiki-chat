@@ -231,7 +231,8 @@ docker-compose ps
 - [x] **Phase 2.1**: JPA Entities (Document, Chunk, Conversation, Message) ✅
 - [x] **Phase 2.2**: Custom Types (VectorAttributeConverter for pgvector) ✅
 - [x] **Phase 2.3**: Repositories (DocumentRepository, ChunkRepository, ConversationRepository, MessageRepository) ✅
-- [ ] Phase 3: Integration Layer
+- [x] **Phase 3.1**: Document Parsers (Markdown, HTML, PDF) + Unit Tests ✅
+- [ ] Phase 3.2: Gemini API Client
 - [ ] Phase 4: Business Logic
 - [ ] Phase 5: REST API
 - [ ] Phase 6: Advanced Configuration
@@ -250,6 +251,6 @@ To contribute to the project, check the guidelines in [AGENTS.md](AGENTS.md).
 
 ---
 
-**Version**: 0.4.0 (Phase 2.3 completed - Repository Layer implemented)  
+**Version**: 0.5.0 (Phase 3.1 completed - Document Parsers implemented)  
 **Last Updated**: December 2025
 
