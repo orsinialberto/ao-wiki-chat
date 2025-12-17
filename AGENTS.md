@@ -45,6 +45,30 @@ Do not invent or assume alternative commands.
 
 ## Coding Conventions (MANDATORY)
 
+### Language (FUNDAMENTAL RULE)
+
+**CRITICAL**: All code, comments, log messages, documentation strings, and user-facing messages **MUST** be written in **English only**.
+
+**NEVER** write:
+- Comments in Italian or any language other than English
+- Log messages in Italian
+- Exception messages in Italian
+- Documentation strings in Italian
+- User-facing messages in Italian
+
+**ALWAYS** use English for:
+- Code comments (`//`, `/* */`)
+- Log statements (`log.info()`, `log.error()`, etc.)
+- Exception messages
+- Javadoc documentation
+- Variable names, method names, class names (already in English by convention)
+- Commit messages
+- Any text visible to developers or users
+
+This is a **fundamental rule** that applies to all code in the repository.
+
+---
+
 ### Naming
 - Classes & interfaces: PascalCase, meaningful nouns  
   Example: `OrderService`, `UserRepository`
@@ -139,6 +163,38 @@ calculateTotalWhenDiscountAppliedReturnsReducedTotal()
 
 ---
 
+## Code Coverage Guidelines (MANDATORY)
+
+**After writing or modifying tests, AI agents MUST**:
+1. Execute tests with coverage: `./mvnw clean test`
+2. Verify coverage meets minimum thresholds:
+   - **Instructions**: ≥ 70%
+   - **Branches**: ≥ 80%
+   - **Lines**: ≥ 70%
+3. Check coverage report: `target/site/jacoco/index.html`
+4. If coverage is insufficient:
+   - Identify uncovered classes/methods
+   - Write additional tests to reach thresholds
+   - Re-run coverage verification
+
+**Exclusions** (do not count toward coverage):
+- `AoWikiChatApplication` (main class)
+- `*.model.entity.*` (JPA entities - getters/setters not tested)
+- `*.model.enums.*` (simple enums)
+
+**Coverage verification command**:
+```bash
+./mvnw clean test
+# Review: target/site/jacoco/index.html
+```
+
+**If coverage check fails**:
+- Do not proceed with commit
+- Write missing tests first
+- Re-verify before completing the task
+
+---
+
 ## Formatting Rules
 
 - Line length: max 100–120 characters
@@ -182,6 +238,7 @@ private static final Logger log = LoggerFactory.getLogger(ClassName.class);
 ## Restrictions
 
 AI agents **MUST NOT**:
+- write comments, logs, or messages in Italian or any language other than English (see Language rule in Coding Conventions)
 - introduce new frameworks or libraries
 - change public APIs without explicit request
 - refactor unrelated code
@@ -342,10 +399,12 @@ public CompletableFuture<Result> processAsync(UUID id) {
 
 - [ ] Code compiles without errors
 - [ ] `mvn test` passes
+- [ ] **All comments, logs, and messages are in English** (no Italian or other languages)
 - [ ] No hardcoded values (use `@Value` or properties)
 - [ ] Logging added for important operations
 - [ ] No TODO/FIXME left behind
 - [ ] Exception handling is complete
 - [ ] No unused imports
 - [ ] API keys not hardcoded (use environment variables)
+- [ ] **Code coverage verified** (≥70% instructions, ≥80% branches, ≥70% lines)
 - [ ] **Documentation checklists updated** (README.md, DEVELOPMENT_PLAN.md)
