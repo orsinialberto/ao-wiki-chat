@@ -330,7 +330,7 @@ Ogni fase può essere testata indipendentemente:
 - [x] Fase 1: Container PostgreSQL accessibile, ping database OK ✅
 - [x] Fase 2: Application si avvia, tabelle create automaticamente ✅
 - [x] Fase 3.1: Parser (MD, HTML, PDF) implementati con test ✅
-- [ ] Fase 3.2: Gemini API client configurato e testato
+- [x] Fase 3.2: Gemini API client configurato e testato (con layer di astrazione) ✅
 - [ ] Fase 4: Upload documento → chunks salvati con embeddings
 - [ ] Fase 5: Endpoint REST rispondono, query funziona end-to-end
 - [ ] Fase 6: Processing async non blocca, errori gestiti

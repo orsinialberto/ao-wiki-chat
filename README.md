@@ -232,7 +232,7 @@ docker-compose ps
 - [x] **Phase 2.2**: Custom Types (VectorAttributeConverter for pgvector) ✅
 - [x] **Phase 2.3**: Repositories (DocumentRepository, ChunkRepository, ConversationRepository, MessageRepository) ✅
 - [x] **Phase 3.1**: Document Parsers (Markdown, HTML, PDF) + Unit Tests ✅
-- [ ] Phase 3.2: Gemini API Client
+- [x] **Phase 3.2**: Gemini API Client (LLMService, EmbeddingService interfaces + Gemini implementation) ✅
 - [ ] Phase 4: Business Logic
 - [ ] Phase 5: REST API
 - [ ] Phase 6: Advanced Configuration
@@ -251,6 +251,6 @@ To contribute to the project, check the guidelines in [AGENTS.md](AGENTS.md).
 
 ---
 
-**Version**: 0.5.0 (Phase 3.1 completed - Document Parsers implemented)  
+**Version**: 0.6.0 (Phase 3.2 completed - Gemini API Client with abstraction layer)  
 **Last Updated**: December 2025
 
