@@ -153,6 +153,7 @@ DB_PASSWORD=wikichat_password
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [AGENTS.md](AGENTS.md) - Guidelines for developers and AI agents
 - [SETUP.md](SETUP.md) - Detailed setup guide
+- [docs/CHUNKING_LOGIC.md](docs/CHUNKING_LOGIC.md) - Chunking algorithm explained
 
 ---
 
@@ -233,7 +234,9 @@ docker-compose ps
 - [x] **Phase 2.3**: Repositories (DocumentRepository, ChunkRepository, ConversationRepository, MessageRepository) ✅
 - [x] **Phase 3.1**: Document Parsers (Markdown, HTML, PDF) + Unit Tests ✅
 - [x] **Phase 3.2**: Gemini API Client (LLMService, EmbeddingService interfaces + Gemini implementation) ✅
-- [ ] Phase 4: Business Logic
+- [ ] **Phase 4**: Business Logic (In Progress)
+  - [x] **Phase 4.1**: ChunkingService (Semantic splitting with overlap) ✅
+  - [ ] Phase 4.2-4.5: EmbeddingService, DocumentService, VectorSearchService, RAGService
 - [ ] Phase 5: REST API
 - [ ] Phase 6: Advanced Configuration
 - [ ] Phase 7: Testing
@@ -251,6 +254,6 @@ To contribute to the project, check the guidelines in [AGENTS.md](AGENTS.md).
 
 ---
 
-**Version**: 0.6.0 (Phase 3.2 completed - Gemini API Client with abstraction layer)  
+**Version**: 0.7.0 (Phase 4.1 completed - ChunkingService with semantic splitting)  
 **Last Updated**: December 2025
 
