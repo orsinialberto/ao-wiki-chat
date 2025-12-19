@@ -25,8 +25,7 @@ This design follows the **Dependency Inversion Principle** and makes the system 
 Location: `com.example.ao_wiki_chat.service.LLMService`
 
 **Methods**:
-- `String generate(String prompt)` - Generate text with default temperature
-- `String generate(String prompt, double temperature)` - Generate text with custom temperature
+- `String generate(String prompt)` - Generate text using configured temperature
 - `boolean isHealthy()` - Health check for the LLM service
 
 **Purpose**: Abstracts text generation operations, allowing any LLM provider to be used.
@@ -51,7 +50,7 @@ Location: `com.example.ao_wiki_chat.service.impl.GeminiLLMService`
 
 **Features**:
 - Uses LangChain4j's `ChatLanguageModel` for Gemini API integration
-- Configurable temperature (default: 0.7)
+- Temperature configured in application.yml (gemini.chat.temperature: 0.7)
 - Input validation (null/empty prompt checks)
 - Response validation (null/empty response checks)
 - Comprehensive error handling with `LLMException`

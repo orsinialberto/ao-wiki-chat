@@ -9,22 +9,13 @@ public interface LLMService {
     
     /**
      * Generates a text response based on the provided prompt.
+     * Uses the temperature configured in application.yml (gemini.chat.temperature).
      *
      * @param prompt the input prompt for text generation
      * @return the generated text response
      * @throws com.example.ao_wiki_chat.exception.LLMException if generation fails
      */
     String generate(String prompt);
-    
-    /**
-     * Generates a text response with custom temperature setting.
-     *
-     * @param prompt the input prompt for text generation
-     * @param temperature controls randomness (0.0 = deterministic, 1.0 = creative)
-     * @return the generated text response
-     * @throws com.example.ao_wiki_chat.exception.LLMException if generation fails
-     */
-    String generate(String prompt, double temperature);
     
     /**
      * Checks if the LLM service is available and responsive.

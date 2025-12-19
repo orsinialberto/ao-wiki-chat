@@ -3,7 +3,6 @@ package com.example.ao_wiki_chat.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.example.ao_wiki_chat.exception.LLMException;
@@ -23,35 +22,25 @@ public class GeminiLLMService implements LLMService {
     private static final Logger log = LoggerFactory.getLogger(GeminiLLMService.class);
     
     private final ChatLanguageModel chatModel;
-    private final double defaultTemperature;
     
     /**
-     * Constructs a GeminiLLMService with the specified chat model and default temperature.
+     * Constructs a GeminiLLMService with the specified chat model.
+     * Temperature is configured in the chat model bean (gemini.chat.temperature in application.yml).
      *
      * @param chatModel the configured Gemini chat model bean
-     * @param defaultTemperature the default temperature for text generation (0.0 to 1.0)
      */
-    public GeminiLLMService(
-            @Qualifier("geminiChatModel") ChatLanguageModel chatModel,
-            @Value("${gemini.chat.temperature:0.7}") double defaultTemperature
-    ) {
+    public GeminiLLMService(@Qualifier("geminiChatModel") ChatLanguageModel chatModel) {
         this.chatModel = chatModel;
-        this.defaultTemperature = defaultTemperature;
-        log.info("GeminiLLMService initialized with default temperature: {}", defaultTemperature);
+        log.info("GeminiLLMService initialized");
     }
     
     @Override
     public String generate(String prompt) {
-        return generate(prompt, defaultTemperature);
-    }
-    
-    @Override
-    public String generate(String prompt, double temperature) {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new LLMException("Prompt cannot be null or empty");
         }
         
-        log.debug("Generating response for prompt of length: {} with temperature: {}", prompt.length(), temperature);
+        log.debug("Generating response for prompt of length: {}", prompt.length());
         
         try {
             long startTime = System.currentTimeMillis();

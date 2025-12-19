@@ -333,7 +333,7 @@ Ogni fase può essere testata indipendentemente:
 - [x] Fase 3.2: Gemini API client configurato e testato (con layer di astrazione) ✅
 - [ ] Fase 4: Upload documento → chunks salvati con embeddings
   - [x] Fase 4.1: ChunkingService implementato e testato ✅
-  - [ ] Fase 4.2: EmbeddingService (batch processing)
+  - [x] Fase 4.2: EmbeddingService (batch processing) ✅
   - [ ] Fase 4.3: DocumentService (upload + processing)
   - [ ] Fase 4.4: VectorSearchService (ricerca similarità)
   - [ ] Fase 4.5: RAGService (orchestratore)

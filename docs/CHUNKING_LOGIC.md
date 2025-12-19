@@ -5,7 +5,7 @@
 Il `ChunkingService` implementa una strategia **Hybrid Semantic + Sliding Window** per dividere documenti in chunk ottimizzati per l'embedding e la ricerca vettoriale. L'obiettivo è creare frammenti di testo che:
 
 1. ✅ Preservano il significato semantico (no split a metà frase)
-2. ✅ Hanno dimensione uniforme (~500 token / 2000 caratteri)
+2. ✅ Hanno dimensione uniforme (~125 token / 500 caratteri)
 3. ✅ Mantengono contesto ai confini (overlap 10%)
 4. ✅ Sono adatti per l'embedding con Gemini
 
@@ -297,16 +297,16 @@ After filtering:
 ```yaml
 rag:
   chunk:
-    size: 2000      # ~500 token (500 × 4 char/token)
-    overlap: 200    # 10% overlap (200 / 2000)
+    size: 500       # ~125 token (500 / 4 char/token)
+    overlap: 50     # 10% overlap (50 / 500)
 ```
 
-### Perché 2000 caratteri?
+### Perché 500 caratteri?
 
-- **Token estimate**: ~4 caratteri/token → 2000 char = ~500 token
-- **Context window**: bilancia tra contesto sufficiente e precisione
-- **Gemini embedding**: dimensione ottimale per text-embedding-004
-- **Industry standard**: 500-1000 token è il sweet spot per RAG
+- **Token estimate**: ~4 caratteri/token → 500 char = ~125 token
+- **Context window**: chunk più piccoli per maggiore precisione nel retrieval
+- **Gemini embedding**: dimensione ottimale per granularità fine con text-embedding-004
+- **Balanced approach**: 100-200 token permette retrieval accurato senza perdere contesto
 
 ### Perché 10% overlap?
 
@@ -640,7 +640,7 @@ void overlapIncludesPreviousContent() {
 ```yaml
 rag:
   chunk:
-    size: 2000  # Aumenta da 500 a 2000
+    size: 1000  # Aumenta da 500 a 1000 se necessario
 ```
 
 ---
@@ -665,7 +665,7 @@ rag:
 ```yaml
 rag:
   chunk:
-    size: 3000  # Aumenta dimensione chunk
+    size: 1000  # Aumenta dimensione chunk se troppi frammenti
 ```
 
 ---

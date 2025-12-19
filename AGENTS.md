@@ -81,8 +81,14 @@ This is a **fundamental rule** that applies to all code in the repository.
 
 ### Class Design
 - One class = one responsibility (SRP)
-- Avoid “God classes” (classes > ~300 lines are suspicious)
+- Avoid "God classes" (classes > ~300 lines are suspicious)
 - Prefer `final` for classes, methods, and fields when possible
+- **Use interfaces only when necessary**:
+  - Strategy pattern (multiple implementations)
+  - Dependency Inversion (for testability when mocking external systems)
+  - Plugin/extension points
+  - **DON'T** create interfaces for single implementations
+  - **DON'T** create interfaces "just in case" for future flexibility
 
 ---
 

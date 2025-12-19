@@ -1,18 +1,19 @@
 package com.example.ao_wiki_chat.service.impl;
 
-import com.example.ao_wiki_chat.exception.LLMException;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.example.ao_wiki_chat.exception.LLMException;
+
+import dev.langchain4j.model.chat.ChatLanguageModel;
 
 /**
  * Unit tests for GeminiLLMService.
@@ -25,11 +26,9 @@ class GeminiLLMServiceTest {
     
     private GeminiLLMService geminiLLMService;
     
-    private static final double DEFAULT_TEMPERATURE = 0.7;
-    
     @BeforeEach
     void setUp() {
-        geminiLLMService = new GeminiLLMService(chatModel, DEFAULT_TEMPERATURE);
+        geminiLLMService = new GeminiLLMService(chatModel);
     }
     
     @Test
@@ -41,22 +40,6 @@ class GeminiLLMServiceTest {
         
         // When
         String response = geminiLLMService.generate(prompt);
-        
-        // Then
-        assertThat(response).isEqualTo(expectedResponse);
-        verify(chatModel).generate(prompt);
-    }
-    
-    @Test
-    void generateWithPromptAndTemperatureReturnsResponse() {
-        // Given
-        String prompt = "Test prompt";
-        double temperature = 0.5;
-        String expectedResponse = "Test response";
-        when(chatModel.generate(prompt)).thenReturn(expectedResponse);
-        
-        // When
-        String response = geminiLLMService.generate(prompt, temperature);
         
         // Then
         assertThat(response).isEqualTo(expectedResponse);

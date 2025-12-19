@@ -34,10 +34,10 @@ public class ChunkingServiceImpl implements ChunkingService {
     // Sentence delimiters (period, exclamation, question mark followed by space/newline)
     private static final Pattern SENTENCE_PATTERN = Pattern.compile("(?<=[.!?])\\s+");
     
-    @Value("${rag.chunk.size:2000}")
+    @Value("${rag.chunk.size:500}")
     private int defaultChunkSize;
     
-    @Value("${rag.chunk.overlap:200}")
+    @Value("${rag.chunk.overlap:50}")
     private int defaultOverlap;
     
     @Override
