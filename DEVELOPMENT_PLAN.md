@@ -334,11 +334,12 @@ Ogni fase può essere testata indipendentemente:
 - [ ] Fase 4: Upload documento → chunks salvati con embeddings
   - [x] Fase 4.1: ChunkingService implementato e testato ✅
   - [x] Fase 4.2: EmbeddingService (batch processing) ✅
-  - [ ] Fase 4.3: DocumentService (upload + processing)
+  - [x] Fase 4.3: DocumentService (upload + processing) ✅
   - [ ] Fase 4.4: VectorSearchService (ricerca similarità)
   - [ ] Fase 4.5: RAGService (orchestratore)
 - [ ] Fase 5: Endpoint REST rispondono, query funziona end-to-end
 - [ ] Fase 6: Processing async non blocca, errori gestiti
+  - [x] Fase 6.1: AsyncConfig con ThreadPoolTaskExecutor ✅
 - [ ] Fase 7: Test passano, sistema stabile
 - [ ] Fase 8: Deploy Docker funzionante
 

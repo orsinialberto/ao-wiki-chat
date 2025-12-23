@@ -1,12 +1,16 @@
 package com.example.ao_wiki_chat.repository;
 
-import com.example.ao_wiki_chat.model.entity.Document;
-import com.example.ao_wiki_chat.model.enums.DocumentStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.example.ao_wiki_chat.model.entity.Document;
+import com.example.ao_wiki_chat.model.enums.DocumentStatus;
 
 /**
  * Repository for Document entity operations.
@@ -48,5 +52,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
      * @return list of all documents, newest first
      */
     List<Document> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * Updates the status of a document.
+     *
+     * @param documentId the document ID
+     * @param status the new status
+     */
+    @Modifying
+    @Query("UPDATE Document d SET d.status = :status WHERE d.id = :documentId")
+    void updateStatus(@Param("documentId") UUID documentId, @Param("status") DocumentStatus status);
 }
 

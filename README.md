@@ -236,9 +236,12 @@ docker-compose ps
 - [x] **Phase 3.2**: Gemini API Client (LLMService, EmbeddingService interfaces + Gemini implementation) ✅
 - [ ] **Phase 4**: Business Logic (In Progress)
   - [x] **Phase 4.1**: ChunkingService (Semantic splitting with overlap) ✅
-  - [ ] Phase 4.2-4.5: EmbeddingService, DocumentService, VectorSearchService, RAGService
+  - [x] **Phase 4.2**: EmbeddingService (batch processing) ✅
+  - [x] **Phase 4.3**: DocumentService (upload + async processing) ✅
+  - [ ] Phase 4.4-4.5: VectorSearchService, RAGService
 - [ ] Phase 5: REST API
 - [ ] Phase 6: Advanced Configuration
+  - [x] **Phase 6.1**: Async Processing Configuration ✅
 - [ ] Phase 7: Testing
 - [ ] Phase 8: Deployment
 
