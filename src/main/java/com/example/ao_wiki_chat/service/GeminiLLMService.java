@@ -1,4 +1,4 @@
-package com.example.ao_wiki_chat.service.impl;
+package com.example.ao_wiki_chat.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import com.example.ao_wiki_chat.exception.LLMException;
-import com.example.ao_wiki_chat.service.LLMService;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 

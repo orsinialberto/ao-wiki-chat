@@ -1,4 +1,4 @@
-package com.example.ao_wiki_chat.service.impl;
+package com.example.ao_wiki_chat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

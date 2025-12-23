@@ -1,4 +1,4 @@
-package com.example.ao_wiki_chat.service.impl;
+package com.example.ao_wiki_chat.service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.example.ao_wiki_chat.exception.EmbeddingException;
-import com.example.ao_wiki_chat.service.EmbeddingService;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -25,7 +24,7 @@ import dev.langchain4j.model.output.Response;
  * and respect rate limits.
  */
 @Service
-public class GeminiEmbeddingService implements EmbeddingService {
+public class GeminiEmbeddingService {
     
     private static final Logger log = LoggerFactory.getLogger(GeminiEmbeddingService.class);
     private static final int MAX_BATCH_SIZE = 100;
@@ -48,7 +47,13 @@ public class GeminiEmbeddingService implements EmbeddingService {
         log.info("GeminiEmbeddingService initialized with dimension: {}", embeddingDimension);
     }
     
-    @Override
+    /**
+     * Generates a vector embedding for a single text.
+     *
+     * @param text the input text to embed
+     * @return the embedding as a float array
+     * @throws com.example.ao_wiki_chat.exception.EmbeddingException if embedding generation fails
+     */
     public float[] generateEmbedding(String text) {
         if (text == null || text.trim().isEmpty()) {
             throw new EmbeddingException("Text cannot be null or empty");
@@ -85,7 +90,14 @@ public class GeminiEmbeddingService implements EmbeddingService {
         }
     }
     
-    @Override
+    /**
+     * Generates vector embeddings for multiple texts in batch.
+     * Batch processing is more efficient for large collections.
+     *
+     * @param texts the list of texts to embed
+     * @return list of embeddings (same order as input)
+     * @throws com.example.ao_wiki_chat.exception.EmbeddingException if embedding generation fails
+     */
     public List<float[]> generateEmbeddings(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
             log.debug("Empty text list provided, returning empty result");
@@ -149,12 +161,20 @@ public class GeminiEmbeddingService implements EmbeddingService {
         }
     }
     
-    @Override
+    /**
+     * Returns the dimensionality of the embeddings produced by this service.
+     *
+     * @return the embedding dimension (e.g., 768 for Gemini text-embedding-004)
+     */
     public int getEmbeddingDimension() {
         return embeddingDimension;
     }
     
-    @Override
+    /**
+     * Checks if the embedding service is available and responsive.
+     *
+     * @return true if the service is healthy, false otherwise
+     */
     public boolean isHealthy() {
         try {
             log.debug("Performing health check on Gemini embedding model");

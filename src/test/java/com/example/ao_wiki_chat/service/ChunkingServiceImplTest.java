@@ -1,14 +1,12 @@
-package com.example.ao_wiki_chat.service.impl;
-
-import com.example.ao_wiki_chat.service.ChunkingService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
+package com.example.ao_wiki_chat.service;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Unit tests for ChunkingServiceImpl.
@@ -23,7 +21,7 @@ class ChunkingServiceImplTest {
     
     @BeforeEach
     void setUp() {
-        chunkingService = new ChunkingServiceImpl();
+        chunkingService = new ChunkingService();
         
         // Set test values for default chunk size and overlap
         ReflectionTestUtils.setField(chunkingService, "defaultChunkSize", DEFAULT_CHUNK_SIZE);
