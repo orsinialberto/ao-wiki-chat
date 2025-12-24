@@ -335,7 +335,7 @@ Ogni fase può essere testata indipendentemente:
   - [x] Fase 4.1: ChunkingService implementato e testato ✅
   - [x] Fase 4.2: EmbeddingService (batch processing) ✅
   - [x] Fase 4.3: DocumentService (upload + processing) ✅
-  - [ ] Fase 4.4: VectorSearchService (ricerca similarità)
+  - [x] Fase 4.4: VectorSearchService (ricerca similarità) ✅
   - [ ] Fase 4.5: RAGService (orchestratore)
 - [ ] Fase 5: Endpoint REST rispondono, query funziona end-to-end
 - [ ] Fase 6: Processing async non blocca, errori gestiti
