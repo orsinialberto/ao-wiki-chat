@@ -331,12 +331,12 @@ Ogni fase può essere testata indipendentemente:
 - [x] Fase 2: Application si avvia, tabelle create automaticamente ✅
 - [x] Fase 3.1: Parser (MD, HTML, PDF) implementati con test ✅
 - [x] Fase 3.2: Gemini API client configurato e testato (con layer di astrazione) ✅
-- [ ] Fase 4: Upload documento → chunks salvati con embeddings
+- [x] Fase 4: Upload documento → chunks salvati con embeddings ✅
   - [x] Fase 4.1: ChunkingService implementato e testato ✅
   - [x] Fase 4.2: EmbeddingService (batch processing) ✅
   - [x] Fase 4.3: DocumentService (upload + processing) ✅
   - [x] Fase 4.4: VectorSearchService (ricerca similarità) ✅
-  - [ ] Fase 4.5: RAGService (orchestratore)
+  - [x] Fase 4.5: RAGService (orchestratore) ✅
 - [ ] Fase 5: Endpoint REST rispondono, query funziona end-to-end
 - [ ] Fase 6: Processing async non blocca, errori gestiti
   - [x] Fase 6.1: AsyncConfig con ThreadPoolTaskExecutor ✅

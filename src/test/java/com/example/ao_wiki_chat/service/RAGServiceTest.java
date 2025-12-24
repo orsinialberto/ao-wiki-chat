@@ -1,0 +1,366 @@
+package com.example.ao_wiki_chat.service;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.example.ao_wiki_chat.exception.EmbeddingException;
+import com.example.ao_wiki_chat.exception.LLMException;
+import com.example.ao_wiki_chat.exception.VectorSearchException;
+import com.example.ao_wiki_chat.model.dto.ChatRequest;
+import com.example.ao_wiki_chat.model.dto.ChatResponse;
+import com.example.ao_wiki_chat.model.entity.Chunk;
+import com.example.ao_wiki_chat.model.entity.Conversation;
+import com.example.ao_wiki_chat.model.entity.Document;
+import com.example.ao_wiki_chat.model.enums.DocumentStatus;
+import com.example.ao_wiki_chat.model.enums.MessageRole;
+import com.example.ao_wiki_chat.repository.ConversationRepository;
+import com.example.ao_wiki_chat.repository.MessageRepository;
+
+/**
+ * Unit tests for RAGService.
+ * Tests the complete RAG pipeline orchestration: embedding generation, vector search,
+ * context building, prompt generation, LLM call, and conversation persistence.
+ */
+@ExtendWith(MockitoExtension.class)
+class RAGServiceTest {
+    
+    @Mock
+    private GeminiEmbeddingService embeddingService;
+    
+    @Mock
+    private VectorSearchService vectorSearchService;
+    
+    @Mock
+    private LLMService llmService;
+    
+    @Mock
+    private ConversationRepository conversationRepository;
+    
+    @Mock
+    private MessageRepository messageRepository;
+    
+    private RAGService ragService;
+    
+    private static final int EMBEDDING_DIMENSION = 768;
+    private static final String TEST_SESSION_ID = "test-session-123";
+    private static final String TEST_QUERY = "What is machine learning?";
+    
+    private float[] testQueryEmbedding;
+    private Document testDocument;
+    private Chunk testChunk1;
+    private Chunk testChunk2;
+    private Conversation testConversation;
+    
+    @BeforeEach
+    void setUp() {
+        ragService = new RAGService(
+            embeddingService,
+            vectorSearchService,
+            llmService,
+            conversationRepository,
+            messageRepository
+        );
+        
+        // Create test embedding
+        testQueryEmbedding = createTestVector(EMBEDDING_DIMENSION, 0.5f);
+        
+        // Create test document
+        UUID documentId = UUID.randomUUID();
+        testDocument = Document.builder()
+                .id(documentId)
+                .filename("test-document.md")
+                .contentType("text/markdown")
+                .fileSize(2048L)
+                .status(DocumentStatus.COMPLETED)
+                .metadata(null)
+                .build();
+        
+        // Create test chunks
+        testChunk1 = Chunk.builder()
+                .id(UUID.randomUUID())
+                .document(testDocument)
+                .content("Machine learning is a subset of artificial intelligence.")
+                .chunkIndex(0)
+                .embedding(createTestVector(EMBEDDING_DIMENSION, 0.3f))
+                .metadata(null)
+                .build();
+        
+        testChunk2 = Chunk.builder()
+                .id(UUID.randomUUID())
+                .document(testDocument)
+                .content("It enables systems to learn from data without explicit programming.")
+                .chunkIndex(1)
+                .embedding(createTestVector(EMBEDDING_DIMENSION, 0.4f))
+                .metadata(null)
+                .build();
+        
+        // Create test conversation
+        testConversation = Conversation.builder()
+                .id(UUID.randomUUID())
+                .sessionId(TEST_SESSION_ID)
+                .title(null)
+                .metadata(null)
+                .build();
+    }
+    
+    @Test
+    void processQueryWhenValidRequestReturnsChatResponse() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1, testChunk2);
+        String expectedAnswer = "Machine learning is a subset of AI that enables systems to learn from data.";
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).isEqualTo(expectedAnswer);
+        assertThat(response.sources()).hasSize(2);
+        assertThat(response.sources().get(0).documentName()).isEqualTo("test-document.md");
+        assertThat(response.sources().get(0).chunkContent()).contains("Machine learning");
+        
+        // Verify interactions
+        verify(embeddingService).generateEmbedding(TEST_QUERY);
+        verify(vectorSearchService).findSimilarChunks(testQueryEmbedding);
+        verify(llmService).generate(anyString());
+        verify(conversationRepository).findBySessionId(TEST_SESSION_ID);
+        verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
+    }
+    
+    @Test
+    void processQueryWhenNoRelevantChunksReturnsEmptyContextResponse() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> emptyChunks = Collections.emptyList();
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(emptyChunks);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).contains("couldn't find any relevant information");
+        assertThat(response.sources()).isEmpty();
+        
+        // Verify LLM was not called
+        verify(llmService, never()).generate(anyString());
+        verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
+    }
+    
+    @Test
+    void processQueryWhenNewSessionCreatesNewConversation() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.empty());
+        when(conversationRepository.save(any(Conversation.class))).thenReturn(testConversation);
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        verify(conversationRepository).findBySessionId(TEST_SESSION_ID);
+        verify(conversationRepository).save(any(Conversation.class));
+    }
+    
+    @Test
+    void processQueryWhenNullRequestThrowsException() {
+        // When/Then
+        assertThatThrownBy(() -> ragService.processQuery(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be null");
+    }
+    
+    @Test
+    void processQueryWhenEmptyQueryThrowsException() {
+        // Given
+        ChatRequest request = new ChatRequest("", TEST_SESSION_ID);
+        
+        // When/Then
+        assertThatThrownBy(() -> ragService.processQuery(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be null or empty");
+    }
+    
+    @Test
+    void processQueryWhenEmptySessionIdThrowsException() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, "");
+        
+        // When/Then
+        assertThatThrownBy(() -> ragService.processQuery(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be null or empty");
+    }
+    
+    @Test
+    void processQueryWhenEmbeddingFailsThrowsException() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY))
+                .thenThrow(new EmbeddingException("Embedding generation failed"));
+        
+        // When/Then
+        assertThatThrownBy(() -> ragService.processQuery(request))
+                .isInstanceOf(EmbeddingException.class)
+                .hasMessageContaining("Embedding generation failed");
+        
+        verify(vectorSearchService, never()).findSimilarChunks(any());
+        verify(llmService, never()).generate(anyString());
+    }
+    
+    @Test
+    void processQueryWhenVectorSearchFailsThrowsException() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding))
+                .thenThrow(new VectorSearchException("Vector search failed"));
+        
+        // When/Then
+        assertThatThrownBy(() -> ragService.processQuery(request))
+                .isInstanceOf(VectorSearchException.class)
+                .hasMessageContaining("Vector search failed");
+        
+        verify(llmService, never()).generate(anyString());
+    }
+    
+    @Test
+    void processQueryWhenLLMFailsThrowsException() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString()))
+                .thenThrow(new LLMException("LLM generation failed"));
+        
+        // When/Then
+        assertThatThrownBy(() -> ragService.processQuery(request))
+                .isInstanceOf(LLMException.class)
+                .hasMessageContaining("LLM generation failed");
+    }
+    
+    @Test
+    void processQueryWhenMultipleChunksBuildsCorrectContext() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1, testChunk2);
+        String expectedAnswer = "Test answer";
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response.sources()).hasSize(2);
+        assertThat(response.sources().get(0).chunkIndex()).isEqualTo(0);
+        assertThat(response.sources().get(1).chunkIndex()).isEqualTo(1);
+        
+        // Verify prompt contains both chunks
+        verify(llmService).generate(org.mockito.ArgumentMatchers.argThat(prompt -> 
+            prompt.contains(testChunk1.getContent()) && 
+            prompt.contains(testChunk2.getContent())
+        ));
+    }
+    
+    @Test
+    void processQueryWhenValidRequestSavesUserAndAssistantMessages() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ragService.processQuery(request);
+        
+        // Then
+        verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
+        
+        // Verify user message
+        verify(messageRepository).save(org.mockito.ArgumentMatchers.argThat(message -> {
+            com.example.ao_wiki_chat.model.entity.Message msg = 
+                    (com.example.ao_wiki_chat.model.entity.Message) message;
+            return msg.getRole() == MessageRole.USER && 
+                   msg.getContent().equals(TEST_QUERY);
+        }));
+        
+        // Verify assistant message
+        verify(messageRepository).save(org.mockito.ArgumentMatchers.argThat(message -> {
+            com.example.ao_wiki_chat.model.entity.Message msg = 
+                    (com.example.ao_wiki_chat.model.entity.Message) message;
+            return msg.getRole() == MessageRole.ASSISTANT && 
+                   msg.getContent().equals(expectedAnswer) &&
+                   msg.getSources() != null;
+        }));
+    }
+    
+    /**
+     * Creates a test vector with specified dimension and fill value.
+     */
+    private float[] createTestVector(int dimension, float fillValue) {
+        float[] vector = new float[dimension];
+        Arrays.fill(vector, fillValue);
+        return vector;
+    }
+}
+
