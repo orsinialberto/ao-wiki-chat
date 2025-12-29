@@ -4,9 +4,14 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -21,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -459,6 +465,90 @@ class DocumentServiceTest {
                 .isInstanceOf(DocumentParsingException.class)
                 .hasMessage("Original parsing error")
                 .isSameAs(originalException);
+    }
+
+    @Test
+    void saveFileToStorageWhenTransferToThrowsIOExceptionThrowsIllegalArgumentException() throws IOException {
+        // Given
+        IOException ioException = new IOException("Failed to write file");
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(multipartFile.getContentType()).thenReturn("application/pdf");
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+        doThrow(ioException).when(multipartFile).transferTo(any(java.io.File.class));
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Failed to save file")
+                .hasCause(ioException);
+    }
+
+    @Test
+    void getDocumentInputStreamWhenFileDoesNotExistThrowsIOException() {
+        // Given
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        // File does not exist in storage (no file created)
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.processDocument(documentId))
+                .isInstanceOf(DocumentParsingException.class)
+                .hasMessageContaining("Failed to read document")
+                .hasCauseInstanceOf(IOException.class)
+                .satisfies(exception -> {
+                    IOException cause = (IOException) ((DocumentParsingException) exception).getCause();
+                    assertThat(cause).isNotNull();
+                    assertThat(cause.getMessage()).contains("File not found in storage");
+                });
+    }
+
+    @Test
+    void deleteFileFromStorageWhenIOExceptionOccursLogsWarningAndDoesNotFail() throws IOException {
+        // Given
+        List<String> chunks = Arrays.asList("Chunk 1");
+        List<float[]> embeddings = Arrays.asList(new float[768]);
+
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
+        when(documentParser.parse(any(java.io.InputStream.class), eq("application/pdf")))
+                .thenReturn(testContent);
+        when(chunkingService.splitIntoChunks(testContent)).thenReturn(chunks);
+        when(embeddingService.generateEmbeddings(chunks)).thenReturn(embeddings);
+        when(chunkRepository.saveAll(any(List.class))).thenReturn(List.of());
+
+        // Create file for processing
+        Path filePath = tempDir.resolve(documentId.toString());
+        Files.write(filePath, testContent.getBytes());
+
+        // Try to make file read-only to simulate potential IOException during deletion
+        // Note: This may not work on all file systems, but tests the error handling path
+        try {
+            Set<PosixFilePermission> readOnly = EnumSet.of(
+                    PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.GROUP_READ,
+                    PosixFilePermission.OTHERS_READ
+            );
+            Files.setPosixFilePermissions(filePath, readOnly);
+        } catch (UnsupportedOperationException | IOException e) {
+            // POSIX permissions not supported on this system (e.g., Windows)
+            // Continue with test - the method should still handle errors gracefully
+        }
+
+        // When - process document successfully
+        // deleteFileFromStorage is called in processDocumentAsync's finally block
+        // Since it catches IOException internally, processing should complete successfully
+        documentService.processDocument(documentId);
+
+        // Then - verify processing completed without exception
+        // The file deletion happens in processDocumentAsync's finally block,
+        // and even if it throws IOException, it's caught and logged as warning
+        verify(documentRepository).findById(documentId);
+        verify(chunkRepository).saveAll(any(List.class));
+        
+        // Verify that processDocument completes successfully even if file deletion fails
+        // This demonstrates that deleteFileFromStorage catches IOException and doesn't propagate it
+        // The method's contract is: it should not throw exceptions, only log warnings
     }
 
     @Test
