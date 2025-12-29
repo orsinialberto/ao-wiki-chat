@@ -118,6 +118,101 @@ class DocumentControllerTest {
     }
 
     @Test
+    void uploadDocumentWhenFileIsNullThrowsIllegalArgumentException() {
+        // Given
+        MultipartFile nullFile = null;
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(nullFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File cannot be null");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
+    void uploadDocumentWhenFileIsEmptyThrowsIllegalArgumentException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(true);
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File cannot be empty");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
+    void uploadDocumentWhenFileSizeIsZeroThrowsIllegalArgumentException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(0L);
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File size must be greater than 0");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
+    void uploadDocumentWhenFilenameIsNullThrowsIllegalArgumentException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(multipartFile.getOriginalFilename()).thenReturn(null);
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File name cannot be null or blank");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
+    void uploadDocumentWhenFilenameIsBlankThrowsIllegalArgumentException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(multipartFile.getOriginalFilename()).thenReturn("   ");
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File name cannot be null or blank");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
+    void uploadDocumentWhenContentTypeIsNullThrowsIllegalArgumentException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(multipartFile.getContentType()).thenReturn(null);
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File content type cannot be null or blank");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
+    void uploadDocumentWhenContentTypeIsBlankThrowsIllegalArgumentException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(multipartFile.getContentType()).thenReturn("   ");
+
+        // When/Then
+        assertThatThrownBy(() -> controller.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("File content type cannot be null or blank");
+        verify(documentService, never()).uploadDocument(any());
+    }
+
+    @Test
     void getAllDocumentsWhenDocumentsExistReturnsOkWithList() {
         // Given
         Document document2 = Document.builder()
@@ -199,6 +294,18 @@ class DocumentControllerTest {
     }
 
     @Test
+    void getDocumentByIdWhenDocumentIdIsNullThrowsIllegalArgumentException() {
+        // Given
+        UUID nullId = null;
+
+        // When/Then
+        assertThatThrownBy(() -> controller.getDocumentById(nullId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Document ID cannot be null");
+        verify(documentService, never()).getDocumentById(any());
+    }
+
+    @Test
     void deleteDocumentWhenDocumentExistsReturnsNoContent() {
         // Given
         doNothing().when(documentService).deleteDocument(documentId);
@@ -223,6 +330,18 @@ class DocumentControllerTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Document not found");
         verify(documentService).deleteDocument(documentId);
+    }
+
+    @Test
+    void deleteDocumentWhenDocumentIdIsNullThrowsIllegalArgumentException() {
+        // Given
+        UUID nullId = null;
+
+        // When/Then
+        assertThatThrownBy(() -> controller.deleteDocument(nullId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Document ID cannot be null");
+        verify(documentService, never()).deleteDocument(any());
     }
 
     @Test
@@ -296,6 +415,19 @@ class DocumentControllerTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("Document not found");
         verify(documentService).getDocumentById(documentId);
+        verify(chunkRepository, never()).findByDocument_IdOrderByChunkIndexAsc(any());
+    }
+
+    @Test
+    void getDocumentChunksWhenDocumentIdIsNullThrowsIllegalArgumentException() {
+        // Given
+        UUID nullId = null;
+
+        // When/Then
+        assertThatThrownBy(() -> controller.getDocumentChunks(nullId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Document ID cannot be null");
+        verify(documentService, never()).getDocumentById(any());
         verify(chunkRepository, never()).findByDocument_IdOrderByChunkIndexAsc(any());
     }
 

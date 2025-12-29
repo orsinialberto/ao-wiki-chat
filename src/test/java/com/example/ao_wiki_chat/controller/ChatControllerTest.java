@@ -355,4 +355,76 @@ class ChatControllerTest {
         verify(conversationRepository).delete(conversation);
         // Cascade delete is handled by JPA, so we verify the conversation deletion
     }
+
+    @Test
+    void getConversationHistoryWhenSessionIdIsNullThrowsIllegalArgumentException() {
+        // Given
+        String nullSessionId = null;
+
+        // When/Then
+        assertThatThrownBy(() -> controller.getConversationHistory(nullSessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Session ID cannot be null or blank");
+        verify(conversationRepository, never()).findBySessionId(any());
+    }
+
+    @Test
+    void getConversationHistoryWhenSessionIdIsBlankThrowsIllegalArgumentException() {
+        // Given
+        String blankSessionId = "   ";
+
+        // When/Then
+        assertThatThrownBy(() -> controller.getConversationHistory(blankSessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Session ID cannot be null or blank");
+        verify(conversationRepository, never()).findBySessionId(any());
+    }
+
+    @Test
+    void getConversationHistoryWhenSessionIdExceedsMaxLengthThrowsIllegalArgumentException() {
+        // Given
+        String longSessionId = "a".repeat(256);
+
+        // When/Then
+        assertThatThrownBy(() -> controller.getConversationHistory(longSessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Session ID must not exceed 255 characters");
+        verify(conversationRepository, never()).findBySessionId(any());
+    }
+
+    @Test
+    void deleteConversationWhenSessionIdIsNullThrowsIllegalArgumentException() {
+        // Given
+        String nullSessionId = null;
+
+        // When/Then
+        assertThatThrownBy(() -> controller.deleteConversation(nullSessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Session ID cannot be null or blank");
+        verify(conversationRepository, never()).findBySessionId(any());
+    }
+
+    @Test
+    void deleteConversationWhenSessionIdIsBlankThrowsIllegalArgumentException() {
+        // Given
+        String blankSessionId = "";
+
+        // When/Then
+        assertThatThrownBy(() -> controller.deleteConversation(blankSessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Session ID cannot be null or blank");
+        verify(conversationRepository, never()).findBySessionId(any());
+    }
+
+    @Test
+    void deleteConversationWhenSessionIdExceedsMaxLengthThrowsIllegalArgumentException() {
+        // Given
+        String longSessionId = "b".repeat(256);
+
+        // When/Then
+        assertThatThrownBy(() -> controller.deleteConversation(longSessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Session ID must not exceed 255 characters");
+        verify(conversationRepository, never()).findBySessionId(any());
+    }
 }

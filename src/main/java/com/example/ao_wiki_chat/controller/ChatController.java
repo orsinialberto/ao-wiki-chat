@@ -82,6 +82,7 @@ public class ChatController {
     public ResponseEntity<List<MessageResponse>> getConversationHistory(
             @PathVariable String sessionId
     ) {
+        validateSessionId(sessionId);
         log.debug("Retrieving conversation history for session: {}", sessionId);
 
         Conversation conversation = conversationRepository.findBySessionId(sessionId)
@@ -110,6 +111,7 @@ public class ChatController {
     public ResponseEntity<Void> deleteConversation(
             @PathVariable String sessionId
     ) {
+        validateSessionId(sessionId);
         log.info("Deleting conversation for session: {}", sessionId);
 
         Conversation conversation = conversationRepository.findBySessionId(sessionId)
@@ -137,5 +139,20 @@ public class ChatController {
                 message.getCreatedAt(),
                 message.getSources()
         );
+    }
+
+    /**
+     * Validates session ID format.
+     *
+     * @param sessionId the session ID to validate
+     * @throws IllegalArgumentException if session ID is invalid
+     */
+    private void validateSessionId(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("Session ID cannot be null or blank");
+        }
+        if (sessionId.length() > 255) {
+            throw new IllegalArgumentException("Session ID must not exceed 255 characters");
+        }
     }
 }

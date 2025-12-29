@@ -51,6 +51,7 @@ public class DocumentController {
 
     /**
      * Uploads a document and initiates asynchronous processing.
+     * Validates file at controller level before processing.
      *
      * @param file the uploaded file
      * @return document upload response with 201 Created status
@@ -59,6 +60,8 @@ public class DocumentController {
     public ResponseEntity<DocumentUploadResponse> uploadDocument(
             @RequestParam("file") MultipartFile file
     ) {
+        validateFileUpload(file);
+        
         log.info("Received document upload request: {} ({} bytes, type: {})",
                 file.getOriginalFilename(), file.getSize(), file.getContentType());
 
@@ -99,6 +102,7 @@ public class DocumentController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<DocumentResponse> getDocumentById(@PathVariable UUID id) {
+        validateDocumentId(id);
         log.debug("Retrieving document: {}", id);
 
         try {
@@ -119,6 +123,7 @@ public class DocumentController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDocument(@PathVariable UUID id) {
+        validateDocumentId(id);
         log.info("Deleting document: {}", id);
 
         try {
@@ -138,6 +143,7 @@ public class DocumentController {
      */
     @GetMapping("/{id}/chunks")
     public ResponseEntity<List<ChunkResponse>> getDocumentChunks(@PathVariable UUID id) {
+        validateDocumentId(id);
         log.debug("Retrieving chunks for document: {}", id);
 
         // Verify document exists
@@ -211,6 +217,47 @@ public class DocumentController {
         } catch (Exception e) {
             log.warn("Failed to parse metadata JSON: {}", e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Validates file upload at controller level.
+     * Checks for null, empty file, and basic file properties.
+     *
+     * @param file the file to validate
+     * @throws IllegalArgumentException if validation fails
+     */
+    private void validateFileUpload(MultipartFile file) {
+        if (file == null) {
+            throw new IllegalArgumentException("File cannot be null");
+        }
+
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be empty");
+        }
+
+        if (file.getSize() == 0) {
+            throw new IllegalArgumentException("File size must be greater than 0");
+        }
+
+        if (file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()) {
+            throw new IllegalArgumentException("File name cannot be null or blank");
+        }
+
+        if (file.getContentType() == null || file.getContentType().isBlank()) {
+            throw new IllegalArgumentException("File content type cannot be null or blank");
+        }
+    }
+
+    /**
+     * Validates document ID (UUID).
+     *
+     * @param id the document ID to validate
+     * @throws IllegalArgumentException if document ID is null
+     */
+    private void validateDocumentId(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Document ID cannot be null");
         }
     }
 }

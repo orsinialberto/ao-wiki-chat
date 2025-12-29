@@ -200,6 +200,29 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleMethodArgumentNotValidExceptionWithObjectErrorReturnsBadRequest() {
+        // Given
+        org.springframework.validation.ObjectError objectError = org.mockito.Mockito.mock(org.springframework.validation.ObjectError.class);
+        when(objectError.getObjectName()).thenReturn("chatRequest");
+        when(objectError.getDefaultMessage()).thenReturn("Global validation error");
+        
+        BindingResult bindingResult = org.mockito.Mockito.mock(BindingResult.class);
+        when(bindingResult.getAllErrors()).thenReturn(List.of(objectError));
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindingResult);
+
+        // When
+        ResponseEntity<ErrorResponse> response = handler.handleMethodArgumentNotValidException(ex, request);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(400);
+        assertThat(response.getBody().fieldErrors()).isNotNull();
+        assertThat(response.getBody().fieldErrors()).hasSize(1);
+        assertThat(response.getBody().fieldErrors().get("chatRequest")).isEqualTo("Global validation error");
+    }
+
+    @Test
     void handleMultipartExceptionReturnsBadRequest() {
         // Given
         MultipartException ex = new MultipartException("File upload failed");
