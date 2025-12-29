@@ -314,5 +314,59 @@ class DocumentServiceTest {
         // Then
         verify(documentRepository).updateStatus(documentId, DocumentStatus.COMPLETED);
     }
+
+    @Test
+    void parseDocumentWhenFileNotFoundThrowsDocumentParsingException() {
+        // Given
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        // File does not exist in storage
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.processDocument(documentId))
+                .isInstanceOf(DocumentParsingException.class)
+                .hasMessageContaining("Failed to read document")
+                .hasCauseInstanceOf(IOException.class);
+    }
+
+    @Test
+    void parseDocumentWhenParserThrowsGenericExceptionWrapsInDocumentParsingException() throws IOException {
+        // Given
+        RuntimeException genericException = new RuntimeException("Generic parsing error");
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
+        when(documentParser.parse(any(java.io.InputStream.class), eq("application/pdf")))
+                .thenThrow(genericException);
+
+        Path filePath = tempDir.resolve(documentId.toString());
+        Files.write(filePath, testContent.getBytes());
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.processDocument(documentId))
+                .isInstanceOf(DocumentParsingException.class)
+                .hasMessageContaining("Unexpected error during parsing")
+                .hasCause(genericException);
+    }
+
+    @Test
+    void parseDocumentWhenParserThrowsDocumentParsingExceptionReThrowsWithoutWrapping() throws IOException {
+        // Given
+        DocumentParsingException originalException = new DocumentParsingException(
+                "Original parsing error", 
+                "application/pdf"
+        );
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
+        when(documentParser.parse(any(java.io.InputStream.class), eq("application/pdf")))
+                .thenThrow(originalException);
+
+        Path filePath = tempDir.resolve(documentId.toString());
+        Files.write(filePath, testContent.getBytes());
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.processDocument(documentId))
+                .isInstanceOf(DocumentParsingException.class)
+                .hasMessage("Original parsing error")
+                .isSameAs(originalException);
+    }
 }
 
