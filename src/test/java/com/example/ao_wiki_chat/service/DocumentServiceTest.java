@@ -468,6 +468,106 @@ class DocumentServiceTest {
     }
 
     @Test
+    void processDocumentAsyncWhenDocumentNotFoundThrowsIllegalArgumentException() {
+        // Given
+        when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.processDocumentAsync(documentId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Document not found: " + documentId);
+
+        // Note: File cleanup does not occur in this case because exception is thrown
+        // before the try-finally block
+    }
+
+    @Test
+    void processDocumentAsyncWhenProcessingSucceedsUpdatesStatusToCompleted() throws IOException {
+        // Given
+        List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
+        List<float[]> embeddings = Arrays.asList(
+                new float[768],
+                new float[768]
+        );
+
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
+        when(documentParser.parse(any(java.io.InputStream.class), eq("application/pdf")))
+                .thenReturn(testContent);
+        when(chunkingService.splitIntoChunks(testContent)).thenReturn(chunks);
+        when(embeddingService.generateEmbeddings(chunks)).thenReturn(embeddings);
+        when(chunkRepository.saveAll(any(List.class))).thenReturn(List.of());
+        doNothing().when(documentRepository).updateStatus(any(UUID.class), any(DocumentStatus.class));
+
+        // Create a temporary file for the document
+        Path filePath = tempDir.resolve(documentId.toString());
+        Files.write(filePath, testContent.getBytes());
+
+        // When
+        documentService.processDocumentAsync(documentId);
+
+        // Then
+        verify(documentRepository).updateStatus(documentId, DocumentStatus.COMPLETED);
+        // Verify file is deleted in finally block
+        assertThat(Files.exists(filePath)).isFalse();
+    }
+
+    @Test
+    void processDocumentAsyncWhenProcessingFailsUpdatesStatusToFailedAndCleansUpFile() throws IOException {
+        // Given
+        DocumentParsingException processingException = new DocumentParsingException(
+                "Processing failed", 
+                "application/pdf"
+        );
+
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
+        when(documentParser.parse(any(java.io.InputStream.class), eq("application/pdf")))
+                .thenThrow(processingException);
+        doNothing().when(documentRepository).updateStatus(any(UUID.class), any(DocumentStatus.class));
+
+        // Create a temporary file for the document
+        Path filePath = tempDir.resolve(documentId.toString());
+        Files.write(filePath, testContent.getBytes());
+
+        // When
+        documentService.processDocumentAsync(documentId);
+
+        // Then
+        verify(documentRepository).updateStatus(documentId, DocumentStatus.FAILED);
+        // Verify file is deleted even when processing fails
+        assertThat(Files.exists(filePath)).isFalse();
+    }
+
+    @Test
+    void processDocumentAsyncWhenProcessingFailsFileIsAlwaysDeletedInFinally() throws IOException {
+        // Given
+        EmbeddingException processingException = new EmbeddingException("Embedding generation failed");
+        List<String> chunks = Arrays.asList("Chunk 1");
+
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
+        when(documentParser.parse(any(java.io.InputStream.class), eq("application/pdf")))
+                .thenReturn(testContent);
+        when(chunkingService.splitIntoChunks(testContent)).thenReturn(chunks);
+        when(embeddingService.generateEmbeddings(chunks))
+                .thenThrow(processingException);
+        doNothing().when(documentRepository).updateStatus(any(UUID.class), any(DocumentStatus.class));
+
+        // Create a temporary file for the document
+        Path filePath = tempDir.resolve(documentId.toString());
+        Files.write(filePath, testContent.getBytes());
+
+        // When
+        documentService.processDocumentAsync(documentId);
+
+        // Then
+        verify(documentRepository).updateStatus(documentId, DocumentStatus.FAILED);
+        // Verify file is deleted in finally block even when exception occurs
+        assertThat(Files.exists(filePath)).isFalse();
+    }
+
+    @Test
     void saveFileToStorageWhenTransferToThrowsIOExceptionThrowsIllegalArgumentException() throws IOException {
         // Given
         IOException ioException = new IOException("Failed to write file");
