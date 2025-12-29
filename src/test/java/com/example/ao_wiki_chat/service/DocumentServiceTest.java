@@ -166,6 +166,95 @@ class DocumentServiceTest {
     }
 
     @Test
+    void uploadDocumentWhenFileSizeIsZeroThrowsException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getContentType()).thenReturn("application/pdf");
+        when(multipartFile.getSize()).thenReturn(0L);
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("File is empty");
+    }
+
+    @Test
+    void uploadDocumentWhenContentTypeIsNullThrowsException() {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getContentType()).thenReturn(null);
+        when(multipartFile.getSize()).thenReturn(1024L);
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.uploadDocument(multipartFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Content type not allowed");
+    }
+
+    @Test
+    void uploadDocumentWhenContentTypeHasSemicolonNormalizesCorrectly() throws IOException {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(multipartFile.getContentType()).thenReturn("application/pdf; charset=utf-8");
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+        doNothing().when(multipartFile).transferTo(any(java.io.File.class));
+        doNothing().when(documentService).processDocumentAsync(any(UUID.class));
+
+        // When
+        UUID result = documentService.uploadDocument(multipartFile);
+
+        // Then
+        assertThat(result).isEqualTo(documentId);
+        verify(documentRepository).save(any(Document.class));
+        verify(multipartFile).transferTo(any(java.io.File.class));
+        verify(documentService).processDocumentAsync(documentId);
+    }
+
+    @Test
+    void uploadDocumentWhenContentTypeIsCaseInsensitiveAcceptsUpperCase() throws IOException {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(multipartFile.getContentType()).thenReturn("APPLICATION/PDF");
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+        doNothing().when(multipartFile).transferTo(any(java.io.File.class));
+        doNothing().when(documentService).processDocumentAsync(any(UUID.class));
+
+        // When
+        UUID result = documentService.uploadDocument(multipartFile);
+
+        // Then
+        assertThat(result).isEqualTo(documentId);
+        verify(documentRepository).save(any(Document.class));
+        verify(multipartFile).transferTo(any(java.io.File.class));
+        verify(documentService).processDocumentAsync(documentId);
+    }
+
+    @Test
+    void uploadDocumentWhenContentTypeIsCaseInsensitiveAcceptsMixedCase() throws IOException {
+        // Given
+        when(multipartFile.isEmpty()).thenReturn(false);
+        when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
+        when(multipartFile.getContentType()).thenReturn("Application/Pdf");
+        when(multipartFile.getSize()).thenReturn(1024L);
+        when(documentRepository.save(any(Document.class))).thenReturn(document);
+        doNothing().when(multipartFile).transferTo(any(java.io.File.class));
+        doNothing().when(documentService).processDocumentAsync(any(UUID.class));
+
+        // When
+        UUID result = documentService.uploadDocument(multipartFile);
+
+        // Then
+        assertThat(result).isEqualTo(documentId);
+        verify(documentRepository).save(any(Document.class));
+        verify(multipartFile).transferTo(any(java.io.File.class));
+        verify(documentService).processDocumentAsync(documentId);
+    }
+
+    @Test
     void processDocumentWhenValidDocumentProcessesSuccessfully() throws IOException {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
