@@ -1,5 +1,6 @@
 package com.example.ao_wiki_chat.service;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +26,7 @@ import com.example.ao_wiki_chat.exception.LLMException;
 import com.example.ao_wiki_chat.exception.VectorSearchException;
 import com.example.ao_wiki_chat.model.dto.ChatRequest;
 import com.example.ao_wiki_chat.model.dto.ChatResponse;
+import com.example.ao_wiki_chat.model.dto.SourceReference;
 import com.example.ao_wiki_chat.model.entity.Chunk;
 import com.example.ao_wiki_chat.model.entity.Conversation;
 import com.example.ao_wiki_chat.model.entity.Document;
@@ -352,6 +354,243 @@ class RAGServiceTest {
                    msg.getContent().equals(expectedAnswer) &&
                    msg.getSources() != null;
         }));
+    }
+    
+    @Test
+    void serializeSourcesWhenNullListReturnsNull() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("serializeSources", List.class);
+        method.setAccessible(true);
+        
+        // When
+        String result = (String) method.invoke(ragService, (List<SourceReference>) null);
+        
+        // Then
+        assertThat(result).isNull();
+    }
+    
+    @Test
+    void serializeSourcesWhenEmptyListReturnsNull() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("serializeSources", List.class);
+        method.setAccessible(true);
+        List<SourceReference> emptyList = Collections.emptyList();
+        
+        // When
+        String result = (String) method.invoke(ragService, emptyList);
+        
+        // Then
+        assertThat(result).isNull();
+    }
+    
+    @Test
+    void serializeSourcesWhenValidSourcesReturnsCorrectJson() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("serializeSources", List.class);
+        method.setAccessible(true);
+        List<SourceReference> sources = Arrays.asList(
+            new SourceReference("doc1.md", "Content 1", 0.85, 0),
+            new SourceReference("doc2.md", "Content 2", 0.90, 1)
+        );
+        
+        // When
+        String result = (String) method.invoke(ragService, sources);
+        
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result).startsWith("[");
+        assertThat(result).endsWith("]");
+        assertThat(result).contains("\"documentName\":\"doc1.md\"");
+        assertThat(result).contains("\"documentName\":\"doc2.md\"");
+        assertThat(result).contains("\"chunkContent\":\"Content 1\"");
+        assertThat(result).contains("\"chunkContent\":\"Content 2\"");
+        assertThat(result).contains("\"similarityScore\":0.85");
+        assertThat(result).contains("\"similarityScore\":0.9");
+        assertThat(result).contains("\"chunkIndex\":0");
+        assertThat(result).contains("\"chunkIndex\":1");
+    }
+    
+    @Test
+    void serializeSourcesWhenSourceReferenceHasNullValuesHandlesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("serializeSources", List.class);
+        method.setAccessible(true);
+        List<SourceReference> sources = Arrays.asList(
+            new SourceReference(null, null, null, null)
+        );
+        
+        // When
+        String result = (String) method.invoke(ragService, sources);
+        
+        // Then - null values should be serialized as "null" strings
+        assertThat(result).isNotNull();
+        assertThat(result).contains("\"documentName\":null");
+        assertThat(result).contains("\"chunkContent\":null");
+        assertThat(result).contains("\"similarityScore\":null");
+        assertThat(result).contains("\"chunkIndex\":null");
+    }
+    
+    @Test
+    void escapeJsonWhenNullStringReturnsNullString() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        
+        // When
+        String result = (String) method.invoke(ragService, (String) null);
+        
+        // Then
+        assertThat(result).isEqualTo("null");
+    }
+    
+    @Test
+    void escapeJsonWhenEmptyStringReturnsQuotedEmptyString() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        
+        // When
+        String result = (String) method.invoke(ragService, "");
+        
+        // Then
+        assertThat(result).isEqualTo("\"\"");
+    }
+    
+    @Test
+    void escapeJsonWhenContainsBackslashEscapesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        String input = "path\\to\\file";
+        
+        // When
+        String result = (String) method.invoke(ragService, input);
+        
+        // Then
+        assertThat(result).isEqualTo("\"path\\\\to\\\\file\"");
+    }
+    
+    @Test
+    void escapeJsonWhenContainsDoubleQuoteEscapesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        String input = "He said \"Hello\"";
+        
+        // When
+        String result = (String) method.invoke(ragService, input);
+        
+        // Then
+        assertThat(result).isEqualTo("\"He said \\\"Hello\\\"\"");
+    }
+    
+    @Test
+    void escapeJsonWhenContainsNewlineEscapesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        String input = "Line 1\nLine 2";
+        
+        // When
+        String result = (String) method.invoke(ragService, input);
+        
+        // Then
+        assertThat(result).isEqualTo("\"Line 1\\nLine 2\"");
+    }
+    
+    @Test
+    void escapeJsonWhenContainsCarriageReturnEscapesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        String input = "Line 1\rLine 2";
+        
+        // When
+        String result = (String) method.invoke(ragService, input);
+        
+        // Then
+        assertThat(result).isEqualTo("\"Line 1\\rLine 2\"");
+    }
+    
+    @Test
+    void escapeJsonWhenContainsTabEscapesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        String input = "Column1\tColumn2";
+        
+        // When
+        String result = (String) method.invoke(ragService, input);
+        
+        // Then
+        assertThat(result).isEqualTo("\"Column1\\tColumn2\"");
+    }
+    
+    @Test
+    void escapeJsonWhenContainsAllSpecialCharactersEscapesCorrectly() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("escapeJson", String.class);
+        method.setAccessible(true);
+        String input = "Text with \"quotes\", \\backslashes\\, \nnewlines, \rreturns, \ttabs";
+        
+        // When
+        String result = (String) method.invoke(ragService, input);
+        
+        // Then
+        assertThat(result).isEqualTo("\"Text with \\\"quotes\\\", \\\\backslashes\\\\, \\nnewlines, \\rreturns, \\ttabs\"");
+    }
+    
+    @Test
+    void serializeSourcesWhenContainsSpecialCharactersProducesValidJson() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("serializeSources", List.class);
+        method.setAccessible(true);
+        List<SourceReference> sources = Arrays.asList(
+            new SourceReference("file\"with\"quotes.md", "Content with\nnewline and\ttab", 0.85, 0)
+        );
+        
+        // When
+        String result = (String) method.invoke(ragService, sources);
+        
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result).contains("\\\"");
+        assertThat(result).contains("\\n");
+        assertThat(result).contains("\\t");
+        // Verify it's valid JSON structure
+        assertThat(result).startsWith("[");
+        assertThat(result).endsWith("]");
+        assertThat(result).contains("\"documentName\":");
+        assertThat(result).contains("\"chunkContent\":");
+    }
+    
+    @Test
+    void serializeSourcesWhenMultipleSourcesWithSpecialCharactersProducesValidJson() throws Exception {
+        // Given
+        Method method = RAGService.class.getDeclaredMethod("serializeSources", List.class);
+        method.setAccessible(true);
+        List<SourceReference> sources = Arrays.asList(
+            new SourceReference("doc\\1.md", "Content\\with\\backslashes", 0.85, 0),
+            new SourceReference("doc\"2\".md", "Content\nwith\nnewlines", 0.90, 1),
+            new SourceReference("doc\t3.md", "Content\twith\ttabs", 0.75, 2)
+        );
+        
+        // When
+        String result = (String) method.invoke(ragService, sources);
+        
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result).startsWith("[");
+        assertThat(result).endsWith("]");
+        // Verify all three sources are present
+        assertThat(result).contains("\"chunkIndex\":0");
+        assertThat(result).contains("\"chunkIndex\":1");
+        assertThat(result).contains("\"chunkIndex\":2");
+        // Verify special characters are escaped
+        assertThat(result).contains("\\\\"); // escaped backslashes
+        assertThat(result).contains("\\\""); // escaped quotes
+        assertThat(result).contains("\\n"); // escaped newlines
+        assertThat(result).contains("\\t"); // escaped tabs
     }
     
     /**
