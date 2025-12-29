@@ -235,6 +235,177 @@ class ChunkingServiceImplTest {
         }
     }
     
+    // ==================== ForceSplitOnWords Edge Cases Tests ====================
+    
+    @Test
+    void forceSplitOnWordsWithSingleWordLongerThanChunkSizeSplitsWord() {
+        // Given - single word longer than chunk size (no spaces, no punctuation)
+        // This will trigger forceSplitOnWords and split the word itself
+        String text = "A".repeat(250); // 250 characters, chunk size is 100
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        // Word should be split into multiple chunks
+        assertThat(chunks.size()).isGreaterThan(1);
+        
+        // Verify each chunk is <= chunkSize
+        for (String chunk : chunks) {
+            assertThat(chunk.length()).isLessThanOrEqualTo(100);
+        }
+        
+        // Verify all chunks together reconstruct the original word
+        String reconstructed = String.join("", chunks);
+        assertThat(reconstructed).isEqualTo(text);
+    }
+    
+    @Test
+    void forceSplitOnWordsWithManyShortWordsSplitsOnWordBoundaries() {
+        // Given - text with many short words, no punctuation (forces word splitting)
+        // Each word is 4 chars + 1 space = 5 chars, so 20 words = 100 chars
+        // Use larger chunk size to avoid filtering small chunks
+        String text = "word ".repeat(50); // 250 characters total
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        assertThat(chunks.size()).isGreaterThan(1);
+        
+        // Verify each chunk is <= chunkSize
+        for (String chunk : chunks) {
+            assertThat(chunk.length()).isLessThanOrEqualTo(100);
+        }
+        
+        // Verify chunks split on word boundaries (no partial words)
+        for (String chunk : chunks) {
+            String trimmed = chunk.trim();
+            // Should not start or end with a space
+            if (!trimmed.isEmpty()) {
+                assertThat(trimmed).doesNotStartWith(" ");
+                assertThat(trimmed).doesNotEndWith(" ");
+            }
+        }
+        
+        // Verify all chunks are at least MIN_CHUNK_SIZE (filtered chunks are removed)
+        for (String chunk : chunks) {
+            assertThat(chunk.length()).isGreaterThanOrEqualTo(50);
+        }
+        
+        // Verify chunks contain complete words (no word is split across chunks)
+        // Each chunk should contain only complete words separated by spaces
+        for (String chunk : chunks) {
+            String trimmed = chunk.trim();
+            if (!trimmed.isEmpty()) {
+                // All words in chunk should be "word" (4 characters)
+                String[] words = trimmed.split("\\s+");
+                for (String word : words) {
+                    assertThat(word).isEqualTo("word");
+                }
+            }
+        }
+    }
+    
+    @Test
+    void forceSplitOnWordsWithSingleWordShorterThanChunkSizeReturnsSingleChunk() {
+        // Given - single word shorter than chunk size
+        String text = "Hello";
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).hasSize(1);
+        assertThat(chunks.get(0)).isEqualTo("Hello");
+        assertThat(chunks.get(0).length()).isLessThanOrEqualTo(100);
+    }
+    
+    @Test
+    void forceSplitOnWordsWithSingleWordExactlyChunkSizeReturnsSingleChunk() {
+        // Given - single word exactly equal to chunk size
+        String text = "A".repeat(100);
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).hasSize(1);
+        assertThat(chunks.get(0)).isEqualTo(text);
+        assertThat(chunks.get(0).length()).isEqualTo(100);
+    }
+    
+    @Test
+    void forceSplitOnWordsNeverCreatesChunksLargerThanChunkSize() {
+        // Given - text that will trigger forceSplitOnWords with various word lengths
+        // Mix of short and long words, no punctuation
+        String text = "short medium verylongword ".repeat(20) + 
+                      "A".repeat(150); // Last part is a single long word
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        
+        // Critical: verify NO chunk exceeds chunkSize
+        for (String chunk : chunks) {
+            assertThat(chunk.length())
+                .as("Chunk should never exceed chunkSize: %s", chunk)
+                .isLessThanOrEqualTo(100);
+        }
+    }
+    
+    @Test
+    void forceSplitOnWordsWithMixedWordLengthsHandlesCorrectly() {
+        // Given - text with words of varying lengths, no punctuation
+        // This tests the word-by-word accumulation logic
+        String text = "a " + "bb ".repeat(10) + "ccc ".repeat(10) + 
+                      "verylongword ".repeat(5) + "A".repeat(120);
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        
+        // Verify all chunks respect size limit
+        for (String chunk : chunks) {
+            assertThat(chunk.length()).isLessThanOrEqualTo(100);
+        }
+        
+        // Verify the long word at the end was split
+        String lastChunk = chunks.get(chunks.size() - 1);
+        // Last chunk should contain part of the long word (120 chars of 'A')
+        assertThat(lastChunk).contains("A");
+    }
+    
+    @Test
+    void forceSplitOnWordsWithEmptyTextReturnsEmptyList() {
+        // Given - empty text (edge case)
+        String text = "";
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).isEmpty();
+    }
+    
+    @Test
+    void forceSplitOnWordsWithOnlyWhitespaceReturnsEmptyList() {
+        // Given - only whitespace (edge case)
+        String text = "   \t  ";
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(text, 100, 0);
+        
+        // Then
+        assertThat(chunks).isEmpty();
+    }
+    
     // ==================== Overlap Tests ====================
     
     @Test
