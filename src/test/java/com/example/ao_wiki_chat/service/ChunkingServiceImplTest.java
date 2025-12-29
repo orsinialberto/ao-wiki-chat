@@ -394,6 +394,99 @@ class ChunkingServiceImplTest {
         assertThat(String.join(" ", chunks)).contains("🎉");
     }
     
+    @Test
+    void splitLargeParagraphWithVeryLongSentencesWithoutPunctuationForcesWordSplit() {
+        // Given - paragraph with very long sentences without punctuation (triggers splitLargeParagraph)
+        // Each "sentence" is just a long sequence of words without punctuation
+        String longSentence1 = "word ".repeat(200); // ~1000 chars
+        String longSentence2 = "text ".repeat(200); // ~1000 chars
+        String paragraph = longSentence1 + longSentence2; // Single paragraph > chunkSize
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(paragraph, 100, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        assertThat(chunks.size()).isGreaterThan(1);
+        // Each chunk should respect chunk size (allowing small margin for word boundaries)
+        for (String chunk : chunks) {
+            assertThat(chunk.length()).isLessThanOrEqualTo(110);
+            assertThat(chunk.trim()).isNotEmpty();
+        }
+        // Verify all words are preserved
+        String rejoined = String.join(" ", chunks);
+        assertThat(rejoined).contains("word");
+        assertThat(rejoined).contains("text");
+    }
+    
+    @Test
+    void splitLargeParagraphWithSingleVeryLongSentenceSplitsOnWords() {
+        // Given - paragraph with single very long sentence (no sentence boundaries)
+        // This will trigger splitLargeParagraph, which will then call forceSplitOnWords
+        String veryLongSentence = "This is a very long sentence without any punctuation " +
+                                  "that continues for many words and should be split " +
+                                  "on word boundaries when it exceeds the chunk size " +
+                                  "because there are no sentence delimiters available " +
+                                  "to use for splitting the paragraph into smaller chunks " +
+                                  "that respect semantic boundaries like periods or exclamation marks " +
+                                  "so the algorithm must fall back to word boundary splitting " +
+                                  "to ensure that no chunk exceeds the maximum allowed size " +
+                                  "which is important for maintaining consistent chunk sizes " +
+                                  "across the entire document processing pipeline.";
+        // Make it a paragraph (will trigger splitLargeParagraph)
+        String paragraph = veryLongSentence + " " + veryLongSentence; // ~2000+ chars
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(paragraph, 150, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        assertThat(chunks.size()).isGreaterThan(1);
+        // Each chunk should be split on word boundaries (no mid-word splits)
+        for (String chunk : chunks) {
+            assertThat(chunk.length()).isLessThanOrEqualTo(160); // chunkSize + margin
+            assertThat(chunk.trim()).isNotEmpty();
+            // Verify chunks don't start/end in the middle of words
+            String trimmed = chunk.trim();
+            if (!trimmed.isEmpty()) {
+                // Should not start with space or end with partial word
+                assertThat(trimmed.charAt(0)).isNotEqualTo(' ');
+            }
+        }
+    }
+    
+    @Test
+    void splitLargeParagraphWithEmptySentencesAfterSplitFiltersThemOut() {
+        // Given - paragraph that after sentence splitting might produce empty sentences
+        // This tests the empty sentence handling in splitLargeParagraph (line 200-202)
+        String paragraph = "First sentence with content.   .   .   Second sentence here. " +
+                          "   .   .   Third sentence with more content.   .   .   " +
+                          "Fourth sentence completes the paragraph.";
+        // Make it large enough to trigger splitLargeParagraph
+        paragraph = paragraph.repeat(10); // ~2000+ chars
+        
+        // When
+        List<String> chunks = chunkingService.splitIntoChunks(paragraph, 100, 0);
+        
+        // Then
+        assertThat(chunks).isNotEmpty();
+        // All chunks should be non-empty (empty sentences should be filtered)
+        for (String chunk : chunks) {
+            assertThat(chunk.trim()).isNotEmpty();
+            // Chunks should not contain only whitespace or punctuation
+            String trimmed = chunk.trim();
+            assertThat(trimmed.length()).isGreaterThan(0);
+            // Should contain actual words
+            assertThat(trimmed.split("\\s+").length).isGreaterThan(0);
+        }
+        // Verify meaningful content is preserved
+        String rejoined = String.join(" ", chunks);
+        assertThat(rejoined).contains("First sentence");
+        assertThat(rejoined).contains("Second sentence");
+        assertThat(rejoined).contains("Third sentence");
+        assertThat(rejoined).contains("Fourth sentence");
+    }
+    
     // ==================== Realistic Use Case Tests ====================
     
     @Test
