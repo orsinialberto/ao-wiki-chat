@@ -337,11 +337,9 @@ Ogni fase può essere testata indipendentemente:
   - [x] Fase 4.3: DocumentService (upload + processing) ✅
   - [x] Fase 4.4: VectorSearchService (ricerca similarità) ✅
   - [x] Fase 4.5: RAGService (orchestratore) ✅
-- [ ] Fase 5: Endpoint REST rispondono, query funziona end-to-end
-- [ ] Fase 6: Processing async non blocca, errori gestiti
+- [X] Fase 5: Endpoint REST rispondono, query funziona end-to-end
+- [x] Fase 6: Processing async non blocca, errori gestiti
   - [x] Fase 6.1: AsyncConfig con ThreadPoolTaskExecutor ✅
-- [ ] Fase 7: Test passano, sistema stabile
-- [ ] Fase 8: Deploy Docker funzionante
 
 ---
 
