@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -192,6 +193,95 @@ class HtmlParserTest {
 
         // Then
         assertThat(result).isFalse();
+    }
+
+    @Test
+    void supportsWhenUppercaseTextHtmlReturnsTrue() {
+        // When
+        final boolean result = parser.supports("TEXT/HTML");
+
+        // Then
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void supportsWhenMixedCaseTextHtmlReturnsTrue() {
+        // When
+        final boolean result = parser.supports("Text/Html");
+
+        // Then
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void supportsWhenUppercaseApplicationXhtmlXmlReturnsTrue() {
+        // When
+        final boolean result = parser.supports("APPLICATION/XHTML+XML");
+
+        // Then
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void parseWhenIOExceptionDuringReadThrowsDocumentParsingException() {
+        // Given
+        final InputStream inputStream = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("Stream closed unexpectedly");
+            }
+        };
+        final String contentType = "text/html";
+
+        // When / Then
+        assertThatThrownBy(() -> parser.parse(inputStream, contentType))
+                .isInstanceOf(DocumentParsingException.class)
+                .hasMessageContaining("Failed to read HTML content")
+                .hasMessageContaining("Stream closed unexpectedly")
+                .satisfies(exception -> {
+                    final DocumentParsingException parsingException = (DocumentParsingException) exception;
+                    assertThat(parsingException.getContentType()).isEqualTo(contentType);
+                    assertThat(parsingException.getCause()).isInstanceOf(IOException.class);
+                });
+    }
+
+    @Test
+    void parseWhenGenericExceptionDuringParsingThrowsDocumentParsingException() {
+        // Given
+        final InputStream inputStream = new InputStream() {
+            private boolean firstRead = true;
+
+            @Override
+            public int read() {
+                if (firstRead) {
+                    firstRead = false;
+                    return '<';
+                }
+                throw new RuntimeException("Unexpected parsing error");
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                if (firstRead) {
+                    firstRead = false;
+                    b[off] = '<';
+                    return 1;
+                }
+                throw new RuntimeException("Unexpected parsing error");
+            }
+        };
+        final String contentType = "text/html";
+
+        // When / Then
+        assertThatThrownBy(() -> parser.parse(inputStream, contentType))
+                .isInstanceOf(DocumentParsingException.class)
+                .hasMessageContaining("Failed to parse HTML content")
+                .hasMessageContaining("Unexpected parsing error")
+                .satisfies(exception -> {
+                    final DocumentParsingException docException = (DocumentParsingException) exception;
+                    assertThat(docException.getContentType()).isEqualTo(contentType);
+                    assertThat(docException.getCause()).isInstanceOf(RuntimeException.class);
+                });
     }
 
     private InputStream toInputStream(String content) {
