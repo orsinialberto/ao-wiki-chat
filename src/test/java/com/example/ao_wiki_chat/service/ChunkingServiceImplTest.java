@@ -728,5 +728,160 @@ class ChunkingServiceImplTest {
         // Then
         assertThat(smallChunks.size()).isGreaterThan(largeChunks.size());
     }
+    
+    // ==================== getLastNCharacters Helper Method Tests ====================
+    
+    @Test
+    void getLastNCharactersWhenTextLengthLessThanOrEqualNReturnsEntireText() {
+        // Given
+        String text = "Short text";
+        int n = 20;
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        assertThat(result).isEqualTo(text);
+    }
+    
+    @Test
+    void getLastNCharactersWhenTextLengthEqualsNReturnsEntireText() {
+        // Given
+        String text = "Exactly ten chars";
+        int n = text.length();
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        assertThat(result).isEqualTo(text);
+    }
+    
+    @Test
+    void getLastNCharactersWhenSpaceInFirstHalfSkipsToFirstSpace() {
+        // Given
+        // Text: "This is a test sentence" (length 24)
+        // Last 10 chars: "t sentence" (has space at position 2, which is < 10/2 = 5)
+        // Expected: "sentence" (skip to first space + 1)
+        String text = "This is a test sentence";
+        int n = 10;
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        // Should skip the space and return "sentence"
+        assertThat(result).isEqualTo("sentence");
+        assertThat(result.length()).isLessThan(n);
+    }
+    
+    @Test
+    void getLastNCharactersWhenNoSpacesReturnsCompleteSubstring() {
+        // Given
+        // Text: "NoSpacesHereAtAll" (length 17)
+        // Last 10 chars: "sHereAtAll" (no spaces, positions 7-16)
+        String text = "NoSpacesHereAtAll";
+        int n = 10;
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        assertThat(result).isEqualTo("sHereAtAll");
+        assertThat(result.length()).isEqualTo(n);
+    }
+    
+    @Test
+    void getLastNCharactersWhenSpaceInSecondHalfReturnsCompleteSubstring() {
+        // Given
+        // Text: "ABCDEFGHIJ KLMNOP" (length 17)
+        // Last 10 chars: substring from position 7 = "HIJ KLMNOP"
+        // Space is at position 3 in substring (3 < 5), so it skips to "KLMNOP"
+        // For space in second half (>= 5), we need space at position >= 5 in last 10
+        // For length 21, n=10: space must be at position >= (21-10+5) = 16 in original
+        // Text: "ABCDEFGHIJKLMNOP QRST" (length 21, space at 16)
+        // Last 10: substring from position 11 = "KLMNOP QRST"
+        // Space at position 16 in original = position 5 in substring (16-11=5)
+        // 5 is NOT < 5, so returns complete
+        String text = "ABCDEFGHIJKLMNOP QRST";
+        int n = 10;
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        // Space at position 5, which is NOT < 5, so returns complete substring
+        // Last 10 chars: positions 11-20 = "LMNOP QRST" (L,M,N,O,P,space,Q,R,S,T)
+        assertThat(result).isEqualTo("LMNOP QRST");
+        assertThat(result.length()).isEqualTo(n);
+    }
+    
+    @Test
+    void getLastNCharactersWhenSpaceAtPositionZeroReturnsCompleteSubstring() {
+        // Given
+        // Text where space is at position 0 in the substring (beginning of last n chars)
+        // Text: "ABCDEFGHIJ KLMNOP" (length 17)
+        // Last 10: substring from position 7 = "HIJ KLMNOP"
+        // Space is at position 3, not 0
+        // To get space at position 0, we need space at the start of last n chars
+        // Text: "ABCDEFGHIJKLMNOP" -> add space: "ABCDEFGHIJ KLMNOP" (space at 10)
+        // Last 10: "HIJ KLMNOP" -> space at 3
+        // Actually, for space at position 0 in substring, space must be at position (length - n)
+        // Text: "ABCDEFGHIJKLMNOP" (length 16) -> add space at position 6: "ABCDEF GHIJKLMNOP" (length 17)
+        // Last 10: substring from position 7 = "F GHIJKLMNOP" -> space at position 1, not 0
+        // Condition is firstSpace > 0, so space at position 0 would be ignored anyway
+        // Let's test with space at position 0: "ABCDEFGHIJKLMNOP" -> "ABCDEFGHIJ KLMNOP"
+        // Actually, let's verify the behavior: space at position 0 means indexOf returns 0
+        // But condition checks firstSpace > 0, so space at 0 is treated as "no meaningful space"
+        // Test with text where substring starts with space: "ABCDEFGHIJ KLMNOP" (space at 10)
+        // Last 10: "HIJ KLMNOP" -> space at 3
+        // To get space at 0, we need: "ABCDEFGHIJKLMNOP" -> "ABCDEFGHIJ KLMNOP" but that's not at 0
+        // Let me test the actual behavior: when space is at position 0, indexOf returns 0
+        // Condition firstSpace > 0 is false, so it returns complete substring
+        // Text: "ABCDEFGHIJKLMNOP" -> "ABCDEFGHIJ KLMNOP" doesn't have space at 0 in substring
+        // Let me create: "ABCDEFGHIJKLMNOP" -> add space at position 7: "ABCDEFG HIJKLMNOP" (length 18)
+        // Last 10: substring from position 8 = " HIJKLMNOP" -> space at position 0
+        // But condition is firstSpace > 0, so 0 > 0 is false, returns complete substring
+        String text = "ABCDEFG HIJKLMNOP";
+        int n = 10;
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        // Substring is " HIJKLMNOP", space at position 0
+        // Condition firstSpace > 0 is false (0 > 0 is false), so returns complete substring
+        assertThat(result).isEqualTo(" HIJKLMNOP");
+        assertThat(result.length()).isEqualTo(n);
+    }
+    
+    @Test
+    void getLastNCharactersWhenSpaceAtExactHalfBoundaryReturnsCompleteSubstring() {
+        // Given
+        // Text where space is exactly at n/2 position in substring
+        // For length 21, n=10: space at position 16 gives position 5 in substring (exactly n/2)
+        // Text: "ABCDEFGHIJKLMNOP QRST" (length 21, space at 16)
+        // Last 10: substring from position 11 = "KLMNOP QRST"
+        // Space is at position 5 in substring (exactly n/2 = 5)
+        // Condition is firstSpace < n/2, so 5 < 5 is false, returns complete
+        String text = "ABCDEFGHIJKLMNOP QRST";
+        int n = 10;
+        
+        // When
+        String result = ReflectionTestUtils.invokeMethod(
+            chunkingService, "getLastNCharacters", text, n);
+        
+        // Then
+        // Space at position 5, which is NOT < 5, so returns complete substring
+        // Last 10 chars: positions 11-20 = "LMNOP QRST" (L,M,N,O,P,space,Q,R,S,T)
+        assertThat(result).isEqualTo("LMNOP QRST");
+        assertThat(result.length()).isEqualTo(n);
+    }
 }
 
