@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.EntityNotFoundException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
@@ -597,5 +599,105 @@ class DocumentServiceTest {
         // Then
         assertThat(result).isEqualTo(100 * 1024 * 1024L);
     }
-}
 
+    @Test
+    void getAllDocumentsWhenListIsEmptyReturnsEmptyList() {
+        // Given
+        when(documentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        // When
+        List<Document> result = documentService.getAllDocuments();
+
+        // Then
+        assertThat(result).isEmpty();
+        verify(documentRepository).findAllByOrderByCreatedAtDesc();
+    }
+
+    @Test
+    void getAllDocumentsWhenListHasDocumentsReturnsDocuments() {
+        // Given
+        Document document1 = Document.builder()
+                .id(UUID.randomUUID())
+                .filename("doc1.pdf")
+                .contentType("application/pdf")
+                .fileSize(1024L)
+                .status(DocumentStatus.COMPLETED)
+                .build();
+
+        Document document2 = Document.builder()
+                .id(UUID.randomUUID())
+                .filename("doc2.md")
+                .contentType("text/markdown")
+                .fileSize(2048L)
+                .status(DocumentStatus.COMPLETED)
+                .build();
+
+        List<Document> documents = Arrays.asList(document1, document2);
+        when(documentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(documents);
+
+        // When
+        List<Document> result = documentService.getAllDocuments();
+
+        // Then
+        assertThat(result).hasSize(2);
+        assertThat(result).containsExactlyElementsOf(documents);
+        verify(documentRepository).findAllByOrderByCreatedAtDesc();
+    }
+
+    @Test
+    void getDocumentByIdWhenDocumentNotFoundThrowsEntityNotFoundException() {
+        // Given
+        UUID nonExistentId = UUID.randomUUID();
+        when(documentRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.getDocumentById(nonExistentId))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Document not found: " + nonExistentId);
+        verify(documentRepository).findById(nonExistentId);
+    }
+
+    @Test
+    void getDocumentByIdWhenDocumentExistsReturnsDocument() {
+        // Given
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+
+        // When
+        Document result = documentService.getDocumentById(documentId);
+
+        // Then
+        assertThat(result).isEqualTo(document);
+        verify(documentRepository).findById(documentId);
+    }
+
+    @Test
+    void deleteDocumentWhenDocumentNotFoundThrowsEntityNotFoundException() {
+        // Given
+        UUID nonExistentId = UUID.randomUUID();
+        when(documentRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+
+        // When/Then
+        assertThatThrownBy(() -> documentService.deleteDocument(nonExistentId))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Document not found: " + nonExistentId);
+        verify(documentRepository).findById(nonExistentId);
+        verify(chunkRepository, never()).deleteByDocument_Id(any(UUID.class));
+        verify(documentRepository, never()).delete(any(Document.class));
+    }
+
+    @Test
+    void deleteDocumentWhenDocumentExistsDeletesDocumentAndChunks() {
+        // Given
+        when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+        doNothing().when(chunkRepository).deleteByDocument_Id(documentId);
+        doNothing().when(documentRepository).delete(document);
+
+        // When
+        documentService.deleteDocument(documentId);
+
+        // Then
+        verify(documentRepository).findById(documentId);
+        verify(chunkRepository).deleteByDocument_Id(documentId);
+        verify(documentRepository).delete(document);
+    }
+}
