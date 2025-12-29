@@ -39,13 +39,13 @@ public final class PdfParser implements DocumentParser {
             
             try (PDDocument document = Loader.loadPDF(pdfBytes)) {
 
-            if (document.isEncrypted()) {
-                log.error("PDF document is encrypted and cannot be parsed");
-                throw new DocumentParsingException(
-                        "Cannot parse encrypted PDF without password", 
-                        contentType
-                );
-            }
+                if (document.isEncrypted()) {
+                    log.error("PDF document is encrypted and cannot be parsed");
+                    throw new DocumentParsingException(
+                            "Cannot parse encrypted PDF without password", 
+                            contentType
+                    );
+                }
 
             final int pageCount = document.getNumberOfPages();
             log.debug("PDF document has {} pages", pageCount);
@@ -69,6 +69,18 @@ public final class PdfParser implements DocumentParser {
             }
 
         } catch (IOException e) {
+            // Check if the IOException is due to encrypted PDF
+            if (e.getMessage() != null && 
+                (e.getMessage().contains("Cannot decrypt PDF") || 
+                 e.getMessage().contains("password is incorrect") ||
+                 e.getMessage().contains("encrypted"))) {
+                log.error("PDF document is encrypted and cannot be parsed");
+                throw new DocumentParsingException(
+                        "Cannot parse encrypted PDF without password", 
+                        contentType,
+                        e
+                );
+            }
             log.error("Failed to read PDF document: {}", e.getMessage());
             throw new DocumentParsingException(
                     "Failed to read PDF content: " + e.getMessage(), 
