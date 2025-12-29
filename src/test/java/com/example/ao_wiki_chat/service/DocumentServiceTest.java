@@ -1,6 +1,7 @@
 package com.example.ao_wiki_chat.service;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -367,6 +368,145 @@ class DocumentServiceTest {
                 .isInstanceOf(DocumentParsingException.class)
                 .hasMessage("Original parsing error")
                 .isSameAs(originalException);
+    }
+
+    @Test
+    void parseFileSizeWhenKbFormatReturnsCorrectBytes() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "100KB";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(100 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenMbFormatReturnsCorrectBytes() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "50MB";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(50 * 1024 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenGbFormatReturnsCorrectBytes() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "1GB";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(1024 * 1024 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenNumericFormatReturnsCorrectBytes() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "52428800";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(52428800L);
+    }
+
+    @Test
+    void parseFileSizeWhenInvalidFormatReturnsDefault50Mb() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "invalid";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(50 * 1024 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenNullReturnsDefault50Mb() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, (String) null);
+
+        // Then
+        assertThat(result).isEqualTo(50 * 1024 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenBlankReturnsDefault50Mb() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "   ";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(50 * 1024 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenEmptyStringReturnsDefault50Mb() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(50 * 1024 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenCaseInsensitiveReturnsCorrectBytes() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "100kb";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(100 * 1024L);
+    }
+
+    @Test
+    void parseFileSizeWhenWithWhitespaceReturnsCorrectBytes() throws Exception {
+        // Given
+        Method parseFileSizeMethod = DocumentService.class.getDeclaredMethod("parseFileSize", String.class);
+        parseFileSizeMethod.setAccessible(true);
+        String sizeString = "  100MB  ";
+
+        // When
+        long result = (long) parseFileSizeMethod.invoke(documentService, sizeString);
+
+        // Then
+        assertThat(result).isEqualTo(100 * 1024 * 1024L);
     }
 }
 
