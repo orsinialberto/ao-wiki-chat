@@ -374,5 +374,49 @@ public class DocumentService {
             return 50 * 1024 * 1024;
         }
     }
+
+    /**
+     * Retrieves all documents ordered by creation date (newest first).
+     *
+     * @return list of all documents
+     */
+    @Transactional(readOnly = true)
+    public List<Document> getAllDocuments() {
+        log.debug("Retrieving all documents");
+        return documentRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    /**
+     * Retrieves a document by ID.
+     *
+     * @param documentId the document ID
+     * @return the document
+     * @throws jakarta.persistence.EntityNotFoundException if document not found
+     */
+    @Transactional(readOnly = true)
+    public Document getDocumentById(UUID documentId) {
+        log.debug("Retrieving document: {}", documentId);
+        return documentRepository.findById(documentId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Document not found: " + documentId));
+    }
+
+    /**
+     * Deletes a document and all associated chunks.
+     *
+     * @param documentId the document ID to delete
+     * @throws jakarta.persistence.EntityNotFoundException if document not found
+     */
+    @Transactional
+    public void deleteDocument(UUID documentId) {
+        log.info("Deleting document: {}", documentId);
+        
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Document not found: " + documentId));
+        
+        chunkRepository.deleteByDocument_Id(documentId);
+        documentRepository.delete(document);
+        
+        log.info("Document and associated chunks deleted: {}", documentId);
+    }
 }
 
