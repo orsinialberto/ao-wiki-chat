@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,24 +37,13 @@ import com.example.ao_wiki_chat.repository.MessageRepository;
 public class RAGService {
     
     private static final Logger log = LoggerFactory.getLogger(RAGService.class);
-    private static final String PROMPT_TEMPLATE = 
-        """
-        You are a helpful assistant that answers questions based on the provided context.
-        
-        Context from documents:
-        %s
-        
-        Question: %s
-        
-        Answer based on the context above. If the context does not contain enough information to answer the question, say so. Use only the information provided in the context.
-        
-        Answer:""";
     
     private final GeminiEmbeddingService embeddingService;
     private final VectorSearchService vectorSearchService;
     private final LLMService llmService;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final int maxPreviousMessages;
     
     /**
      * Constructs a RAGService with required dependencies.
@@ -63,21 +53,24 @@ public class RAGService {
      * @param llmService service for generating LLM responses
      * @param conversationRepository repository for conversation operations
      * @param messageRepository repository for message operations
+     * @param maxPreviousMessages maximum number of previous messages to include in prompt
      */
     public RAGService(
             GeminiEmbeddingService embeddingService,
             VectorSearchService vectorSearchService,
             LLMService llmService,
             ConversationRepository conversationRepository,
-            MessageRepository messageRepository
+            MessageRepository messageRepository,
+            @Value("${rag.conversation.max-previous-messages:10}") int maxPreviousMessages
     ) {
         this.embeddingService = embeddingService;
         this.vectorSearchService = vectorSearchService;
         this.llmService = llmService;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
+        this.maxPreviousMessages = maxPreviousMessages;
         
-        log.info("RAGService initialized");
+        log.info("RAGService initialized with max previous messages: {}", maxPreviousMessages);
     }
     
     /**
@@ -174,7 +167,6 @@ public class RAGService {
     
     /**
      * Builds the prompt with context, query, and conversation history.
-     * For now, uses the existing template. Conversation history will be integrated in a future ticket.
      *
      * @param context the context from relevant document chunks
      * @param query the user query
@@ -182,14 +174,82 @@ public class RAGService {
      * @return the complete prompt string
      */
     private String buildPrompt(String context, String query, List<Message> previousMessages) {
-        // TODO: Integrate conversation history into prompt (to be implemented in next ticket)
-        // For now, use existing template without conversation history
-        if (previousMessages.isEmpty()) {
-            log.debug("No previous messages, using standard prompt template");
-        } else {
-            log.debug("Previous messages available ({}), but not yet integrated into prompt", previousMessages.size());
+        return buildPromptWithContext(context, query, previousMessages);
+    }
+    
+    /**
+     * Builds the prompt including document context, previous conversation, and current query.
+     * Includes only the last N messages (configurable) to avoid exceeding token limits.
+     *
+     * @param documentContext the context from relevant document chunks
+     * @param currentQuery the current user query
+     * @param previousMessages the previous messages in the conversation (ordered chronologically)
+     * @return the complete prompt string with conversation history
+     */
+    private String buildPromptWithContext(String documentContext, String currentQuery, List<Message> previousMessages) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("You are a helpful assistant that answers questions based on the provided context.\n\n");
+        
+        // Add document context
+        prompt.append("Context from documents:\n");
+        prompt.append(documentContext);
+        prompt.append("\n\n");
+        
+        // Add previous conversation if available
+        if (previousMessages != null && !previousMessages.isEmpty()) {
+            prompt.append("Previous conversation:\n");
+            String conversationHistory = formatConversationHistory(previousMessages);
+            prompt.append(conversationHistory);
+            prompt.append("\n\n");
         }
-        return String.format(PROMPT_TEMPLATE, context, query);
+        
+        // Add current question
+        prompt.append("Question: ");
+        prompt.append(currentQuery);
+        prompt.append("\n\n");
+        
+        // Add instruction
+        prompt.append("Answer based on the context above. If the context does not contain enough information to answer the question, say so. Use only the information provided in the context.\n\n");
+        prompt.append("Answer:");
+        
+        return prompt.toString();
+    }
+    
+    /**
+     * Formats previous messages into a conversation history string.
+     * Includes only the last N messages (based on maxPreviousMessages configuration)
+     * to avoid exceeding token limits.
+     *
+     * @param previousMessages all previous messages (ordered chronologically)
+     * @return formatted conversation history string
+     */
+    private String formatConversationHistory(List<Message> previousMessages) {
+        if (previousMessages == null || previousMessages.isEmpty()) {
+            return "";
+        }
+        
+        // Take only the last N messages
+        int startIndex = Math.max(0, previousMessages.size() - maxPreviousMessages);
+        List<Message> recentMessages = previousMessages.subList(startIndex, previousMessages.size());
+        
+        if (recentMessages.size() < previousMessages.size()) {
+            log.debug("Limiting conversation history to last {} messages (out of {} total)", 
+                    maxPreviousMessages, previousMessages.size());
+        }
+        
+        StringBuilder history = new StringBuilder();
+        for (Message message : recentMessages) {
+            if (message.getRole() == MessageRole.USER) {
+                history.append("User: ");
+                history.append(message.getContent());
+            } else if (message.getRole() == MessageRole.ASSISTANT) {
+                history.append("Assistant: ");
+                history.append(message.getContent());
+            }
+            history.append("\n");
+        }
+        
+        return history.toString().trim();
     }
     
     /**

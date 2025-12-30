@@ -68,6 +68,8 @@ rag:
   vector:
     dimension: 768
     distance-metric: cosine
+  conversation:
+    max-previous-messages: 10
 
 management:
   endpoints:

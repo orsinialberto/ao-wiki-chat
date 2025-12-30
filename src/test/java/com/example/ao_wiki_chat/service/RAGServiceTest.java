@@ -77,7 +77,8 @@ class RAGServiceTest {
             vectorSearchService,
             llmService,
             conversationRepository,
-            messageRepository
+            messageRepository,
+            10 // maxPreviousMessages
         );
         
         // Create test embedding
