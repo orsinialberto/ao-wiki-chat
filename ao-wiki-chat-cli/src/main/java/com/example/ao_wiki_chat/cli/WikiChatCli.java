@@ -1,5 +1,6 @@
 package com.example.ao_wiki_chat.cli;
 
+import com.example.ao_wiki_chat.cli.command.chat.*;
 import com.example.ao_wiki_chat.cli.command.document.*;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -21,7 +22,10 @@ import picocli.CommandLine.HelpCommand;
 		ListCommand.class,
 		ShowCommand.class,
 		DeleteCommand.class,
-		ChunksCommand.class
+		ChunksCommand.class,
+		QueryCommand.class,
+		HistoryCommand.class,
+		ClearCommand.class
 	}
 )
 public class WikiChatCli implements Runnable {
