@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -697,6 +699,296 @@ class RAGServiceTest {
         assertThat(result).contains("\\\""); // escaped quotes
         assertThat(result).contains("\\n"); // escaped newlines
         assertThat(result).contains("\\t"); // escaped tabs
+    }
+    
+    // ========== Conversational Context Tests ==========
+    
+    @Test
+    void processQueryWhenFirstQueryWithoutContextDoesNotIncludePreviousConversation() {
+        // Given - first query, no previous messages
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).isEqualTo(expectedAnswer);
+        
+        // Verify prompt does not contain "Previous conversation:"
+        verify(llmService).generate(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        assertThat(prompt).doesNotContain("Previous conversation:");
+        assertThat(prompt).contains("Question: " + TEST_QUERY);
+        assertThat(prompt).contains(testChunk1.getContent());
+    }
+    
+    @Test
+    void processQueryWhenPreviousMessagesExistIncludesConversationHistory() {
+        // Given - query with previous messages
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        // Create previous messages
+        com.example.ao_wiki_chat.model.entity.Message previousUserMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.USER)
+                .content("What is AI?")
+                .build();
+        
+        com.example.ao_wiki_chat.model.entity.Message previousAssistantMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.ASSISTANT)
+                .content("AI is artificial intelligence.")
+                .build();
+        
+        List<com.example.ao_wiki_chat.model.entity.Message> previousMessages = 
+                Arrays.asList(previousUserMessage, previousAssistantMessage);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(previousMessages);
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).isEqualTo(expectedAnswer);
+        
+        // Verify prompt contains "Previous conversation:" and previous messages
+        verify(llmService).generate(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        assertThat(prompt).contains("Previous conversation:");
+        assertThat(prompt).contains("User: What is AI?");
+        assertThat(prompt).contains("Assistant: AI is artificial intelligence.");
+        assertThat(prompt).contains("Question: " + TEST_QUERY);
+    }
+    
+    @Test
+    void processQueryWhenMoreMessagesThanMaxHistoryLimitsToLastN() {
+        // Given - more messages than maxHistoryMessages (10)
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        // Create 15 messages (more than maxHistoryMessages = 10)
+        List<com.example.ao_wiki_chat.model.entity.Message> previousMessages = new java.util.ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            com.example.ao_wiki_chat.model.entity.Message userMsg = 
+                    com.example.ao_wiki_chat.model.entity.Message.builder()
+                    .id(UUID.randomUUID())
+                    .conversation(testConversation)
+                    .role(MessageRole.USER)
+                    .content("Question " + i)
+                    .build();
+            previousMessages.add(userMsg);
+            
+            com.example.ao_wiki_chat.model.entity.Message assistantMsg = 
+                    com.example.ao_wiki_chat.model.entity.Message.builder()
+                    .id(UUID.randomUUID())
+                    .conversation(testConversation)
+                    .role(MessageRole.ASSISTANT)
+                    .content("Answer " + i)
+                    .build();
+            previousMessages.add(assistantMsg);
+        }
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(previousMessages);
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        
+        // Verify prompt contains only last 10 messages (20 messages total, last 10 = messages 10-19)
+        verify(llmService).generate(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        assertThat(prompt).contains("Previous conversation:");
+        
+        // Should contain messages from index 10 onwards (last 10 messages)
+        assertThat(prompt).contains("Question 10");
+        assertThat(prompt).contains("Answer 10");
+        assertThat(prompt).contains("Question 14");
+        assertThat(prompt).contains("Answer 14");
+        
+        // Should NOT contain early messages (first 5 messages)
+        assertThat(prompt).doesNotContain("Question 0");
+        assertThat(prompt).doesNotContain("Answer 0");
+        assertThat(prompt).doesNotContain("Question 4");
+        assertThat(prompt).doesNotContain("Answer 4");
+    }
+    
+    @Test
+    void processQueryWhenIncludeHistoryDisabledDoesNotIncludePreviousMessages() {
+        // Given - RAGService with includeHistory = false
+        RAGService ragServiceWithoutHistory = new RAGService(
+            embeddingService,
+            vectorSearchService,
+            llmService,
+            conversationRepository,
+            messageRepository,
+            10, // maxHistoryMessages
+            false // includeHistory = false
+        );
+        
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        // Create previous messages
+        com.example.ao_wiki_chat.model.entity.Message previousUserMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.USER)
+                .content("Previous question")
+                .build();
+        
+        com.example.ao_wiki_chat.model.entity.Message previousAssistantMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.ASSISTANT)
+                .content("Previous answer")
+                .build();
+        
+        List<com.example.ao_wiki_chat.model.entity.Message> previousMessages = 
+                Arrays.asList(previousUserMessage, previousAssistantMessage);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(previousMessages);
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        
+        // When
+        ChatResponse response = ragServiceWithoutHistory.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).isEqualTo(expectedAnswer);
+        
+        // Verify prompt does NOT contain "Previous conversation:" even though messages exist
+        verify(llmService).generate(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        assertThat(prompt).doesNotContain("Previous conversation:");
+        assertThat(prompt).doesNotContain("Previous question");
+        assertThat(prompt).doesNotContain("Previous answer");
+        assertThat(prompt).contains("Question: " + TEST_QUERY);
+    }
+    
+    @Test
+    void processQueryWhenPreviousMessagesExistFormatsPromptCorrectly() {
+        // Given - query with previous messages to verify formatting
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        // Create previous messages with specific content
+        com.example.ao_wiki_chat.model.entity.Message previousUserMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.USER)
+                .content("What is artificial intelligence?")
+                .build();
+        
+        com.example.ao_wiki_chat.model.entity.Message previousAssistantMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.ASSISTANT)
+                .content("Artificial intelligence is the simulation of human intelligence by machines.")
+                .build();
+        
+        List<com.example.ao_wiki_chat.model.entity.Message> previousMessages = 
+                Arrays.asList(previousUserMessage, previousAssistantMessage);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(previousMessages);
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        
+        // Verify prompt formatting
+        verify(llmService).generate(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        
+        // Verify structure: should contain "Previous conversation:" section
+        assertThat(prompt).contains("Previous conversation:");
+        
+        // Verify message formatting with correct prefixes
+        assertThat(prompt).contains("User: What is artificial intelligence?");
+        assertThat(prompt).contains("Assistant: Artificial intelligence is the simulation of human intelligence by machines.");
+        
+        // Verify order: User message should come before Assistant message
+        int userIndex = prompt.indexOf("User: What is artificial intelligence?");
+        int assistantIndex = prompt.indexOf("Assistant: Artificial intelligence");
+        assertThat(userIndex).isLessThan(assistantIndex);
+        
+        // Verify current question is present
+        assertThat(prompt).contains("Question: " + TEST_QUERY);
+        
+        // Verify document context is present
+        assertThat(prompt).contains("Context from documents:");
+        assertThat(prompt).contains(testChunk1.getContent());
     }
     
     /**
