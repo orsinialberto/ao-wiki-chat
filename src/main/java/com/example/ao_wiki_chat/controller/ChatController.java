@@ -1,5 +1,20 @@
 package com.example.ao_wiki_chat.controller;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.example.ao_wiki_chat.model.dto.ChatRequest;
 import com.example.ao_wiki_chat.model.dto.ChatResponse;
 import com.example.ao_wiki_chat.model.dto.MessageResponse;
@@ -8,17 +23,9 @@ import com.example.ao_wiki_chat.model.entity.Message;
 import com.example.ao_wiki_chat.repository.ConversationRepository;
 import com.example.ao_wiki_chat.repository.MessageRepository;
 import com.example.ao_wiki_chat.service.RAGService;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * REST controller for chat operations.
