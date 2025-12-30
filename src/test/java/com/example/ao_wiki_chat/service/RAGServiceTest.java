@@ -134,6 +134,8 @@ class RAGServiceTest {
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         
@@ -152,6 +154,7 @@ class RAGServiceTest {
         verify(vectorSearchService).findSimilarChunks(testQueryEmbedding);
         verify(llmService).generate(anyString());
         verify(conversationRepository).findBySessionId(TEST_SESSION_ID);
+        verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
         verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
     }
     
@@ -165,6 +168,8 @@ class RAGServiceTest {
         when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(emptyChunks);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         
@@ -178,6 +183,7 @@ class RAGServiceTest {
         
         // Verify LLM was not called
         verify(llmService, never()).generate(anyString());
+        verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
         verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
     }
     
@@ -194,6 +200,8 @@ class RAGServiceTest {
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.empty());
         when(conversationRepository.save(any(Conversation.class))).thenReturn(testConversation);
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         
@@ -204,6 +212,7 @@ class RAGServiceTest {
         assertThat(response).isNotNull();
         verify(conversationRepository).findBySessionId(TEST_SESSION_ID);
         verify(conversationRepository).save(any(Conversation.class));
+        verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
     }
     
     @Test
@@ -241,6 +250,10 @@ class RAGServiceTest {
         // Given
         ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
         
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(embeddingService.generateEmbedding(TEST_QUERY))
                 .thenThrow(new EmbeddingException("Embedding generation failed"));
         
@@ -259,6 +272,10 @@ class RAGServiceTest {
         ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(vectorSearchService.findSimilarChunks(testQueryEmbedding))
                 .thenThrow(new VectorSearchException("Vector search failed"));
         
@@ -277,6 +294,10 @@ class RAGServiceTest {
         List<Chunk> relevantChunks = Arrays.asList(testChunk1);
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
         when(llmService.generate(anyString()))
                 .thenThrow(new LLMException("LLM generation failed"));
@@ -299,6 +320,8 @@ class RAGServiceTest {
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         
@@ -329,6 +352,8 @@ class RAGServiceTest {
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
         when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         
@@ -336,6 +361,7 @@ class RAGServiceTest {
         ragService.processQuery(request);
         
         // Then
+        verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
         verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
         
         // Verify user message
@@ -354,6 +380,84 @@ class RAGServiceTest {
                    msg.getContent().equals(expectedAnswer) &&
                    msg.getSources() != null;
         }));
+    }
+    
+    @Test
+    void processQueryWhenPreviousMessagesExistRetrievesConversationHistory() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        // Create previous messages
+        com.example.ao_wiki_chat.model.entity.Message previousUserMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.USER)
+                .content("Previous question")
+                .build();
+        
+        com.example.ao_wiki_chat.model.entity.Message previousAssistantMessage = 
+                com.example.ao_wiki_chat.model.entity.Message.builder()
+                .id(UUID.randomUUID())
+                .conversation(testConversation)
+                .role(MessageRole.ASSISTANT)
+                .content("Previous answer")
+                .build();
+        
+        List<com.example.ao_wiki_chat.model.entity.Message> previousMessages = 
+                Arrays.asList(previousUserMessage, previousAssistantMessage);
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(previousMessages);
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).isEqualTo(expectedAnswer);
+        
+        // Verify previous messages were retrieved
+        verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
+        verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
+    }
+    
+    @Test
+    void processQueryWhenNoPreviousMessagesHandlesEmptyList() {
+        // Given
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        List<Chunk> relevantChunks = Arrays.asList(testChunk1);
+        String expectedAnswer = "Test answer";
+        
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(llmService.generate(anyString())).thenReturn(expectedAnswer);
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID))
+                .thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
+                .thenReturn(Collections.emptyList());
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // When
+        ChatResponse response = ragService.processQuery(request);
+        
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.answer()).isEqualTo(expectedAnswer);
+        
+        // Verify empty list was handled correctly (no previous messages - first query)
+        verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
+        verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
     }
     
     @Test

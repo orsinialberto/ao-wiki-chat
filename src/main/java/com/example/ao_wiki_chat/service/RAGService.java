@@ -3,6 +3,7 @@ package com.example.ao_wiki_chat.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,6 +110,12 @@ public class RAGService {
         log.info("Processing query for session: {}, query length: {}", sessionId, query.length());
         
         try {
+            // Step 0: Get or create conversation and retrieve previous messages
+            log.debug("Step 0: Getting or creating conversation");
+            Conversation conversation = getOrCreateConversation(sessionId);
+            List<Message> previousMessages = retrievePreviousMessages(conversation.getId());
+            log.info("Retrieved {} previous messages for conversation", previousMessages.size());
+            
             // Step 1: Generate embedding for the query
             log.debug("Step 1: Generating query embedding");
             float[] queryEmbedding = embeddingService.generateEmbedding(query);
@@ -122,7 +129,7 @@ public class RAGService {
             if (relevantChunks.isEmpty()) {
                 log.warn("No relevant chunks found for query, returning empty response");
                 String noContextAnswer = "I couldn't find any relevant information in the documents to answer your question.";
-                return saveAndReturnResponse(sessionId, query, noContextAnswer, List.of());
+                return saveAndReturnResponse(conversation, query, noContextAnswer, List.of());
             }
             
             // Step 3: Build context from chunks
@@ -130,9 +137,9 @@ public class RAGService {
             String context = buildContext(relevantChunks);
             log.debug("Context built, length: {} characters", context.length());
             
-            // Step 4: Generate structured prompt
-            log.debug("Step 4: Generating structured prompt");
-            String prompt = String.format(PROMPT_TEMPLATE, context, query);
+            // Step 4: Generate structured prompt with conversation history
+            log.debug("Step 4: Generating structured prompt with conversation history");
+            String prompt = buildPrompt(context, query, previousMessages);
             log.debug("Prompt generated, length: {} characters", prompt.length());
             
             // Step 5: Call LLM to generate answer
@@ -144,12 +151,45 @@ public class RAGService {
             List<SourceReference> sources = buildSourceReferences(relevantChunks);
             
             // Step 7: Save conversation and messages, return response
-            return saveAndReturnResponse(sessionId, query, answer, sources);
+            return saveAndReturnResponse(conversation, query, answer, sources);
             
         } catch (Exception e) {
             log.error("Error processing RAG query: {}", e.getMessage(), e);
             throw e;
         }
+    }
+    
+    /**
+     * Retrieves previous messages from the conversation, ordered chronologically.
+     * Returns an empty list if no previous messages exist (first query of the session).
+     *
+     * @param conversationId the conversation UUID
+     * @return list of previous messages, ordered by creation time (oldest first)
+     */
+    private List<Message> retrievePreviousMessages(UUID conversationId) {
+        List<Message> messages = messageRepository.findByConversation_IdOrderByCreatedAtAsc(conversationId);
+        log.debug("Retrieved {} previous messages for conversation {}", messages.size(), conversationId);
+        return messages;
+    }
+    
+    /**
+     * Builds the prompt with context, query, and conversation history.
+     * For now, uses the existing template. Conversation history will be integrated in a future ticket.
+     *
+     * @param context the context from relevant document chunks
+     * @param query the user query
+     * @param previousMessages the previous messages in the conversation (ordered chronologically)
+     * @return the complete prompt string
+     */
+    private String buildPrompt(String context, String query, List<Message> previousMessages) {
+        // TODO: Integrate conversation history into prompt (to be implemented in next ticket)
+        // For now, use existing template without conversation history
+        if (previousMessages.isEmpty()) {
+            log.debug("No previous messages, using standard prompt template");
+        } else {
+            log.debug("Previous messages available ({}), but not yet integrated into prompt", previousMessages.size());
+        }
+        return String.format(PROMPT_TEMPLATE, context, query);
     }
     
     /**
@@ -208,22 +248,19 @@ public class RAGService {
     /**
      * Saves the conversation and messages to the database and returns the response.
      *
-     * @param sessionId the session identifier
+     * @param conversation the conversation entity
      * @param query the user query
      * @param answer the generated answer
      * @param sources the source references
      * @return chat response
      */
     private ChatResponse saveAndReturnResponse(
-            String sessionId,
+            Conversation conversation,
             String query,
             String answer,
             List<SourceReference> sources
     ) {
-        log.debug("Saving conversation and messages for session: {}", sessionId);
-        
-        // Get or create conversation
-        Conversation conversation = getOrCreateConversation(sessionId);
+        log.debug("Saving conversation and messages for session: {}", conversation.getSessionId());
         
         // Save user message
         Message userMessage = Message.builder()
@@ -245,7 +282,7 @@ public class RAGService {
         messageRepository.save(assistantMessage);
         log.debug("Saved assistant message with {} sources", sources.size());
         
-        log.info("Conversation saved successfully for session: {}", sessionId);
+        log.info("Conversation saved successfully for session: {}", conversation.getSessionId());
         
         return new ChatResponse(answer, sources);
     }
