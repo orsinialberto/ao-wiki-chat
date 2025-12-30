@@ -43,7 +43,8 @@ public class RAGService {
     private final LLMService llmService;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
-    private final int maxPreviousMessages;
+    private final int maxHistoryMessages;
+    private final boolean includeHistory;
     
     /**
      * Constructs a RAGService with required dependencies.
@@ -53,7 +54,8 @@ public class RAGService {
      * @param llmService service for generating LLM responses
      * @param conversationRepository repository for conversation operations
      * @param messageRepository repository for message operations
-     * @param maxPreviousMessages maximum number of previous messages to include in prompt
+     * @param maxHistoryMessages maximum number of previous messages to include in prompt
+     * @param includeHistory whether to include conversation history in prompt
      */
     public RAGService(
             GeminiEmbeddingService embeddingService,
@@ -61,16 +63,19 @@ public class RAGService {
             LLMService llmService,
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
-            @Value("${rag.conversation.max-previous-messages:10}") int maxPreviousMessages
+            @Value("${rag.conversation.max-history-messages:10}") int maxHistoryMessages,
+            @Value("${rag.conversation.include-history:true}") boolean includeHistory
     ) {
         this.embeddingService = embeddingService;
         this.vectorSearchService = vectorSearchService;
         this.llmService = llmService;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
-        this.maxPreviousMessages = maxPreviousMessages;
+        this.maxHistoryMessages = maxHistoryMessages;
+        this.includeHistory = includeHistory;
         
-        log.info("RAGService initialized with max previous messages: {}", maxPreviousMessages);
+        log.info("RAGService initialized with max history messages: {}, include history: {}", 
+                maxHistoryMessages, includeHistory);
     }
     
     /**
@@ -180,6 +185,7 @@ public class RAGService {
     /**
      * Builds the prompt including document context, previous conversation, and current query.
      * Includes only the last N messages (configurable) to avoid exceeding token limits.
+     * Conversation history can be disabled via configuration.
      *
      * @param documentContext the context from relevant document chunks
      * @param currentQuery the current user query
@@ -195,8 +201,8 @@ public class RAGService {
         prompt.append(documentContext);
         prompt.append("\n\n");
         
-        // Add previous conversation if available
-        if (previousMessages != null && !previousMessages.isEmpty()) {
+        // Add previous conversation if enabled and available
+        if (includeHistory && previousMessages != null && !previousMessages.isEmpty()) {
             prompt.append("Previous conversation:\n");
             String conversationHistory = formatConversationHistory(previousMessages);
             prompt.append(conversationHistory);
@@ -217,7 +223,7 @@ public class RAGService {
     
     /**
      * Formats previous messages into a conversation history string.
-     * Includes only the last N messages (based on maxPreviousMessages configuration)
+     * Includes only the last N messages (based on maxHistoryMessages configuration)
      * to avoid exceeding token limits.
      *
      * @param previousMessages all previous messages (ordered chronologically)
@@ -229,12 +235,12 @@ public class RAGService {
         }
         
         // Take only the last N messages
-        int startIndex = Math.max(0, previousMessages.size() - maxPreviousMessages);
+        int startIndex = Math.max(0, previousMessages.size() - maxHistoryMessages);
         List<Message> recentMessages = previousMessages.subList(startIndex, previousMessages.size());
         
         if (recentMessages.size() < previousMessages.size()) {
             log.debug("Limiting conversation history to last {} messages (out of {} total)", 
-                    maxPreviousMessages, previousMessages.size());
+                    maxHistoryMessages, previousMessages.size());
         }
         
         StringBuilder history = new StringBuilder();

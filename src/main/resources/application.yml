@@ -69,7 +69,8 @@ rag:
     dimension: 768
     distance-metric: cosine
   conversation:
-    max-previous-messages: 10
+    max-history-messages: 10  # Maximum number of previous messages to include
+    include-history: true     # Enable/disable conversation context (default: true)
 
 management:
   endpoints:

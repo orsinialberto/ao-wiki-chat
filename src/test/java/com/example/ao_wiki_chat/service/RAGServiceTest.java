@@ -78,7 +78,8 @@ class RAGServiceTest {
             llmService,
             conversationRepository,
             messageRepository,
-            10 // maxPreviousMessages
+            10, // maxHistoryMessages
+            true // includeHistory
         );
         
         // Create test embedding
