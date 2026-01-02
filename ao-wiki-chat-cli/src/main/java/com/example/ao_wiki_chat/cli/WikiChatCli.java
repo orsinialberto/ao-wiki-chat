@@ -2,6 +2,7 @@ package com.example.ao_wiki_chat.cli;
 
 import com.example.ao_wiki_chat.cli.command.chat.*;
 import com.example.ao_wiki_chat.cli.command.document.*;
+import com.example.ao_wiki_chat.cli.command.system.*;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
@@ -25,7 +26,9 @@ import picocli.CommandLine.HelpCommand;
 		ChunksCommand.class,
 		QueryCommand.class,
 		HistoryCommand.class,
-		ClearCommand.class
+		ClearCommand.class,
+		HealthCommand.class,
+		ConfigCommand.class
 	}
 )
 public class WikiChatCli implements Runnable {
