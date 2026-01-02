@@ -5,6 +5,7 @@ RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD,
 ## 🛠️ Tech Stack
 
 - **Backend**: Java 25, Spring Boot 4.x
+- **CLI**: Java 25, Picocli
 - **Database**: PostgreSQL 15 + pgvector
 - **AI/ML**: LangChain4j, Google Gemini API
 - **Containerization**: Docker, Docker Compose
@@ -147,12 +148,62 @@ DB_PASSWORD=wikichat_password
 
 ---
 
+## 💻 Command-Line Interface (CLI)
+
+WikiChat includes a powerful CLI for interacting with the system from the command line.
+
+### Quick Start CLI
+
+```bash
+# Build the CLI
+./mvnw clean package -pl ao-wiki-chat-cli -am
+
+# Install wrapper script (Unix/macOS)
+chmod +x scripts/wikichat
+export PATH="$PATH:$(pwd)/scripts"
+
+# Or use directly
+java -jar ao-wiki-chat-cli/target/ao-wiki-chat-cli-0.0.1-SNAPSHOT.jar --help
+```
+
+### Basic Usage
+
+```bash
+# Configure backend URL
+wikichat config set api.url http://localhost:8080/api
+
+# Check system health
+wikichat health
+
+# Upload a document
+wikichat upload document.md --wait
+
+# Query the system
+wikichat query "What is the main topic?"
+
+# Start interactive mode
+wikichat interactive
+```
+
+### Available Commands
+
+- **Document Management**: `upload`, `list`, `show`, `delete`, `chunks`
+- **Chat**: `query`, `interactive`, `history`, `clear`
+- **System**: `health`, `config`
+
+### Documentation
+
+For complete CLI documentation, see [CLI_README.md](ao-wiki-chat-cli/CLI_README.md).
+
+---
+
 ## 📚 Documentation
 
 - [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) - Complete development plan
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [AGENTS.md](AGENTS.md) - Guidelines for developers and AI agents
 - [SETUP.md](SETUP.md) - Detailed setup guide
+- [CLI_README.md](ao-wiki-chat-cli/CLI_README.md) - CLI user guide and reference
 - [docs/CHUNKING_LOGIC.md](docs/CHUNKING_LOGIC.md) - Chunking algorithm explained
 
 ---
