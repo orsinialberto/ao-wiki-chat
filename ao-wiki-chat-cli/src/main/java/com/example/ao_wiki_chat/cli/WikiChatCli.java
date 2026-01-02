@@ -27,6 +27,7 @@ import picocli.CommandLine.HelpCommand;
 		QueryCommand.class,
 		HistoryCommand.class,
 		ClearCommand.class,
+		InteractiveCommand.class,
 		HealthCommand.class,
 		ConfigCommand.class
 	}
