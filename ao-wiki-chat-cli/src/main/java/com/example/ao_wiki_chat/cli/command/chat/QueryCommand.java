@@ -4,6 +4,8 @@ import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliChatResponse;
+import com.example.ao_wiki_chat.cli.output.OutputFormatter;
+import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
 import picocli.CommandLine;
 
 /**
@@ -37,8 +39,8 @@ public class QueryCommand implements Runnable {
 
     @CommandLine.Option(
             names = {"--format", "-f"},
-            description = "Output format: text, json, or markdown (default: text)",
-            defaultValue = "text"
+            description = "Output format: table, json, markdown, or plain (default: table)",
+            defaultValue = "table"
     )
     String format;
 
@@ -61,6 +63,16 @@ public class QueryCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates an OutputFormatter instance. Can be overridden in tests.
+     *
+     * @return OutputFormatter instance
+     */
+    OutputFormatter createFormatter() {
+        ConfigManager configManager = new ConfigManager();
+        return OutputFormatterFactory.create(format, configManager.get());
+    }
+
     @Override
     public void run() {
         try {
@@ -70,7 +82,7 @@ public class QueryCommand implements Runnable {
             // Validate format
             if (!isValidFormat(format)) {
                 throw new IllegalArgumentException(
-                        "Invalid format: " + format + ". Must be one of: text, json, markdown"
+                        "Invalid format: " + format + ". Must be one of: table, json, markdown, plain"
                 );
             }
 
@@ -89,9 +101,9 @@ public class QueryCommand implements Runnable {
             // Send query
             CliChatResponse response = apiClient.query(query, effectiveSessionId);
 
-            // Format and display output
-            String output = formatResponse(response, format, showSources);
-            System.out.println(output);
+            // Format and display output using formatter
+            OutputFormatter formatter = createFormatter();
+            System.out.println(formatter.formatChatResponse(response, showSources));
 
         } catch (IllegalArgumentException e) {
             System.err.println("Error: " + e.getMessage());
@@ -107,22 +119,6 @@ public class QueryCommand implements Runnable {
     }
 
     /**
-     * Formats the response according to the specified format.
-     *
-     * @param response the chat response
-     * @param format the output format
-     * @param showSources whether to show sources
-     * @return formatted output string
-     */
-    private String formatResponse(CliChatResponse response, String format, boolean showSources) {
-        return switch (format.toLowerCase()) {
-            case "json" -> ChatCommandUtils.formatChatResponseJson(response);
-            case "markdown" -> ChatCommandUtils.formatChatResponseMarkdown(response, showSources);
-            default -> ChatCommandUtils.formatChatResponseText(response, showSources);
-        };
-    }
-
-    /**
      * Validates the output format.
      *
      * @param format the format to validate
@@ -133,6 +129,7 @@ public class QueryCommand implements Runnable {
             return false;
         }
         String lower = format.toLowerCase();
-        return "text".equals(lower) || "json".equals(lower) || "markdown".equals(lower);
+        return "table".equals(lower) || "text".equals(lower) || "json".equals(lower)
+                || "markdown".equals(lower) || "md".equals(lower) || "plain".equals(lower);
     }
 }

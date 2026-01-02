@@ -74,7 +74,8 @@ class ChunksCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Total chunks: 2");
+        assertThat(outputStream.toString()).contains("Index");
+        assertThat(outputStream.toString()).contains("chunk content");
         verify(apiClient, times(1)).getDocumentChunks(documentId);
     }
 
@@ -204,6 +205,6 @@ class ChunksCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Total chunks: 0");
+        assertThat(outputStream.toString()).contains("No chunks found");
     }
 }

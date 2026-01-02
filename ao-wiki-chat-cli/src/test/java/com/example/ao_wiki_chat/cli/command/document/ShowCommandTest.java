@@ -74,7 +74,8 @@ class ShowCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Document Details");
+        assertThat(outputStream.toString()).contains("Field");
+        assertThat(outputStream.toString()).contains("Value");
         assertThat(outputStream.toString()).contains("test.pdf");
         verify(apiClient, times(1)).getDocument(documentId);
     }
@@ -111,7 +112,8 @@ class ShowCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Chunks");
+        assertThat(outputStream.toString()).contains("Index");
+        assertThat(outputStream.toString()).contains("chunk content");
         verify(apiClient, times(1)).getDocumentChunks(documentId);
     }
 
@@ -143,7 +145,9 @@ class ShowCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Metadata");
+        assertThat(outputStream.toString()).contains("Key");
+        assertThat(outputStream.toString()).contains("key1");
+        assertThat(outputStream.toString()).contains("value1");
         verify(apiClient, times(1)).getDocument(documentId);
     }
 

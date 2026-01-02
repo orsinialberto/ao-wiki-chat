@@ -4,6 +4,8 @@ import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliChunk;
+import com.example.ao_wiki_chat.cli.output.OutputFormatter;
+import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
 import picocli.CommandLine;
 
 import java.util.List;
@@ -33,8 +35,8 @@ public class ChunksCommand implements Runnable {
 
     @CommandLine.Option(
             names = {"--format"},
-            description = "Output format: text or json (default: text)",
-            defaultValue = "text"
+            description = "Output format: table, json, markdown, or plain (default: table)",
+            defaultValue = "table"
     )
     String format;
 
@@ -57,6 +59,16 @@ public class ChunksCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates an OutputFormatter instance. Can be overridden in tests.
+     *
+     * @return OutputFormatter instance
+     */
+    OutputFormatter createFormatter() {
+        ConfigManager configManager = new ConfigManager();
+        return OutputFormatterFactory.create(format, configManager.get());
+    }
+
     @Override
     public void run() {
         try {
@@ -74,17 +86,9 @@ public class ChunksCommand implements Runnable {
             // Fetch chunks
             List<CliChunk> chunks = apiClient.getDocumentChunks(id);
 
-            // Format output
-            if ("json".equalsIgnoreCase(format)) {
-                System.out.println(DocumentCommandUtils.formatAsJson(chunks));
-            } else {
-                System.out.println("Chunks for document " + id + ":");
-                System.out.println("Total chunks: " + chunks.size());
-                if (!chunks.isEmpty()) {
-                    System.out.println();
-                    System.out.println(DocumentCommandUtils.formatChunksTable(chunks, limit));
-                }
-            }
+            // Format output using formatter
+            OutputFormatter formatter = createFormatter();
+            System.out.println(formatter.formatChunks(chunks, limit));
 
         } catch (IllegalArgumentException e) {
             System.err.println("Error: " + e.getMessage());

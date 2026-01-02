@@ -4,6 +4,8 @@ import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliMessage;
+import com.example.ao_wiki_chat.cli.output.OutputFormatter;
+import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
 import picocli.CommandLine;
 
 import java.util.List;
@@ -26,8 +28,8 @@ public class HistoryCommand implements Runnable {
 
     @CommandLine.Option(
             names = {"--format", "-f"},
-            description = "Output format: text, json, or markdown (default: text)",
-            defaultValue = "text"
+            description = "Output format: table, json, markdown, or plain (default: table)",
+            defaultValue = "table"
     )
     String format;
 
@@ -57,6 +59,16 @@ public class HistoryCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates an OutputFormatter instance. Can be overridden in tests.
+     *
+     * @return OutputFormatter instance
+     */
+    OutputFormatter createFormatter() {
+        ConfigManager configManager = new ConfigManager();
+        return OutputFormatterFactory.create(format, configManager.get());
+    }
+
     @Override
     public void run() {
         try {
@@ -66,7 +78,7 @@ public class HistoryCommand implements Runnable {
             // Validate format
             if (!isValidFormat(format)) {
                 throw new IllegalArgumentException(
-                        "Invalid format: " + format + ". Must be one of: text, json, markdown"
+                        "Invalid format: " + format + ". Must be one of: table, json, markdown, plain"
                 );
             }
 
@@ -76,9 +88,9 @@ public class HistoryCommand implements Runnable {
             // Fetch history
             List<CliMessage> messages = apiClient.getHistory(sessionId);
 
-            // Format and display output
-            String output = formatHistory(messages, format, showSources);
-            System.out.println(output);
+            // Format and display output using formatter
+            OutputFormatter formatter = createFormatter();
+            System.out.println(formatter.formatHistory(messages, showSources));
 
         } catch (IllegalArgumentException e) {
             System.err.println("Error: " + e.getMessage());
@@ -94,22 +106,6 @@ public class HistoryCommand implements Runnable {
     }
 
     /**
-     * Formats the conversation history according to the specified format.
-     *
-     * @param messages the list of messages
-     * @param format the output format
-     * @param showSources whether to show sources
-     * @return formatted output string
-     */
-    private String formatHistory(List<CliMessage> messages, String format, boolean showSources) {
-        return switch (format.toLowerCase()) {
-            case "json" -> ChatCommandUtils.formatHistoryJson(messages);
-            case "markdown" -> ChatCommandUtils.formatHistoryMarkdown(messages, showSources);
-            default -> ChatCommandUtils.formatHistoryText(messages, showSources);
-        };
-    }
-
-    /**
      * Validates the output format.
      *
      * @param format the format to validate
@@ -120,6 +116,7 @@ public class HistoryCommand implements Runnable {
             return false;
         }
         String lower = format.toLowerCase();
-        return "text".equals(lower) || "json".equals(lower) || "markdown".equals(lower);
+        return "table".equals(lower) || "text".equals(lower) || "json".equals(lower)
+                || "markdown".equals(lower) || "md".equals(lower) || "plain".equals(lower);
     }
 }

@@ -5,6 +5,8 @@ import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDocument;
 import com.example.ao_wiki_chat.cli.model.CliDocumentList;
+import com.example.ao_wiki_chat.cli.output.OutputFormatter;
+import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
 import picocli.CommandLine;
 
 import java.util.List;
@@ -27,8 +29,8 @@ public class ListCommand implements Runnable {
 
     @CommandLine.Option(
             names = {"--format"},
-            description = "Output format: text or json (default: text)",
-            defaultValue = "text"
+            description = "Output format: table, json, markdown, or plain (default: table)",
+            defaultValue = "table"
     )
     String format;
 
@@ -51,6 +53,16 @@ public class ListCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates an OutputFormatter instance. Can be overridden in tests.
+     *
+     * @return OutputFormatter instance
+     */
+    OutputFormatter createFormatter() {
+        ConfigManager configManager = new ConfigManager();
+        return OutputFormatterFactory.create(format, configManager.get());
+    }
+
     @Override
     public void run() {
         try {
@@ -71,16 +83,9 @@ public class ListCommand implements Runnable {
                 documents = DocumentCommandUtils.filterByStatus(documents, status);
             }
 
-            // Format output
-            if ("json".equalsIgnoreCase(format)) {
-                System.out.println(DocumentCommandUtils.formatAsJson(documents));
-            } else {
-                System.out.println("Total documents: " + documents.size());
-                if (!documents.isEmpty()) {
-                    System.out.println();
-                    System.out.println(DocumentCommandUtils.formatDocumentsTable(documents));
-                }
-            }
+            // Format output using formatter
+            OutputFormatter formatter = createFormatter();
+            System.out.println(formatter.formatDocuments(documents));
 
         } catch (IllegalArgumentException e) {
             System.err.println("Error: " + e.getMessage());

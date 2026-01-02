@@ -5,6 +5,8 @@ import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliChunk;
 import com.example.ao_wiki_chat.cli.model.CliDocument;
+import com.example.ao_wiki_chat.cli.output.OutputFormatter;
+import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
 import picocli.CommandLine;
 
 import java.util.List;
@@ -40,8 +42,8 @@ public class ShowCommand implements Runnable {
 
     @CommandLine.Option(
             names = {"--format"},
-            description = "Output format: text or json (default: text)",
-            defaultValue = "text"
+            description = "Output format: table, json, markdown, or plain (default: table)",
+            defaultValue = "table"
     )
     String format;
 
@@ -64,6 +66,16 @@ public class ShowCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates an OutputFormatter instance. Can be overridden in tests.
+     *
+     * @return OutputFormatter instance
+     */
+    OutputFormatter createFormatter() {
+        ConfigManager configManager = new ConfigManager();
+        return OutputFormatterFactory.create(format, configManager.get());
+    }
+
     @Override
     public void run() {
         try {
@@ -76,27 +88,21 @@ public class ShowCommand implements Runnable {
             // Fetch document
             CliDocument document = apiClient.getDocument(id);
 
-            // Format output
-            if ("json".equalsIgnoreCase(format)) {
-                System.out.println(document);
-            } else {
-                System.out.println("Document Details:");
-                System.out.println(DocumentCommandUtils.formatDocumentDetails(document));
+            // Format output using formatter
+            OutputFormatter formatter = createFormatter();
+            System.out.println(formatter.formatDocument(document));
 
-                // Show metadata if requested
-                if (showMetadata && document.metadata() != null) {
-                    System.out.println();
-                    System.out.println("Metadata:");
-                    System.out.println(DocumentCommandUtils.formatMetadata(document.metadata()));
-                }
+            // Show metadata if requested
+            if (showMetadata && document.metadata() != null) {
+                System.out.println();
+                System.out.println(formatter.formatMetadata(document.metadata()));
+            }
 
-                // Show chunks if requested
-                if (showChunks) {
-                    List<CliChunk> chunks = apiClient.getDocumentChunks(id);
-                    System.out.println();
-                    System.out.println("Chunks (" + chunks.size() + "):");
-                    System.out.println(DocumentCommandUtils.formatChunksTable(chunks, null));
-                }
+            // Show chunks if requested
+            if (showChunks) {
+                List<CliChunk> chunks = apiClient.getDocumentChunks(id);
+                System.out.println();
+                System.out.println(formatter.formatChunks(chunks, null));
             }
 
         } catch (IllegalArgumentException e) {

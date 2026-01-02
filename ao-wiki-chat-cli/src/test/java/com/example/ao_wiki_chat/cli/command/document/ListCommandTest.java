@@ -78,7 +78,8 @@ class ListCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Total documents: 2");
+        assertThat(outputStream.toString()).contains("ID");
+        assertThat(outputStream.toString()).contains("Filename");
         assertThat(outputStream.toString()).contains("doc1.pdf");
         assertThat(outputStream.toString()).contains("doc2.pdf");
         verify(apiClient, times(1)).listDocuments();
@@ -115,7 +116,8 @@ class ListCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Total documents: 1");
+        assertThat(outputStream.toString()).contains("doc1.pdf");
+        assertThat(outputStream.toString()).doesNotContain("doc2.pdf");
         verify(apiClient, times(1)).listDocuments();
     }
 
@@ -183,6 +185,6 @@ class ListCommandTest {
 
         // Then
         assertThat(exitCode).isEqualTo(0);
-        assertThat(outputStream.toString()).contains("Total documents: 0");
+        assertThat(outputStream.toString()).contains("No documents found");
     }
 }
