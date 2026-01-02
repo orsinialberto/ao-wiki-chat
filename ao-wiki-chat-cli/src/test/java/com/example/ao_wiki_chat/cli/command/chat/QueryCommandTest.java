@@ -150,12 +150,12 @@ class QueryCommandTest {
 
         CommandLine cmd = new CommandLine(command);
 
-        // When
-        int exitCode = cmd.execute("What is AI?", "--session", "invalid-uuid");
+        // When - using a session ID with invalid characters (@ is not allowed)
+        int exitCode = cmd.execute("What is AI?", "--session", "invalid@session");
 
         // Then
         assertThat(exitCode).isNotEqualTo(0);
-        assertThat(errorStream.toString()).contains("must be a valid UUID format");
+        assertThat(errorStream.toString()).contains("Invalid session ID format");
     }
 
     @Test

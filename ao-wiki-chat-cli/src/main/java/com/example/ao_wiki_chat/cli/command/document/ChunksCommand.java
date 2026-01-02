@@ -3,6 +3,8 @@ package com.example.ao_wiki_chat.cli.command.document;
 import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
+import com.example.ao_wiki_chat.cli.exception.CliException;
+import com.example.ao_wiki_chat.cli.util.InputValidator;
 import com.example.ao_wiki_chat.cli.model.CliChunk;
 import com.example.ao_wiki_chat.cli.output.OutputFormatter;
 import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
@@ -73,7 +75,7 @@ public class ChunksCommand implements Runnable {
     public void run() {
         try {
             // Validate UUID
-            UUID id = DocumentCommandUtils.validateUuid(documentId);
+            UUID id = InputValidator.validateUuid(documentId);
 
             // Validate limit if provided
             if (limit != null && limit <= 0) {
@@ -90,16 +92,10 @@ public class ChunksCommand implements Runnable {
             OutputFormatter formatter = createFormatter();
             System.out.println(formatter.formatChunks(chunks, limit));
 
-        } catch (IllegalArgumentException e) {
-            System.err.println("Error: " + e.getMessage());
+        } catch (CliException | IllegalArgumentException e) {
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
-            System.err.println("API Error: " + e.getMessage());
-            throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
-        } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
-            e.printStackTrace();
-            throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
+            throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
         }
     }
 }

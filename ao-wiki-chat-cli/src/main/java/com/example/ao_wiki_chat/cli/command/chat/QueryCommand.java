@@ -3,6 +3,8 @@ package com.example.ao_wiki_chat.cli.command.chat;
 import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
+import com.example.ao_wiki_chat.cli.exception.CliException;
+import com.example.ao_wiki_chat.cli.util.InputValidator;
 import com.example.ao_wiki_chat.cli.model.CliChatResponse;
 import com.example.ao_wiki_chat.cli.output.OutputFormatter;
 import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
@@ -106,7 +108,7 @@ public class QueryCommand implements Runnable {
                 effectiveSessionId = ChatCommandUtils.generateSessionId();
                 colorPrinter.info("Session ID: " + effectiveSessionId);
             } else {
-                ChatCommandUtils.validateSessionId(effectiveSessionId);
+                InputValidator.validateSessionId(effectiveSessionId);
             }
 
             // Initialize API client
@@ -119,16 +121,12 @@ public class QueryCommand implements Runnable {
             OutputFormatter formatter = createFormatter();
             System.out.println(formatter.formatChatResponse(response, showSources));
 
-        } catch (IllegalArgumentException e) {
+        } catch (CliException | IllegalArgumentException e) {
             colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
             colorPrinter.error("API Error: " + e.getMessage());
-            throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
-        } catch (Exception e) {
-            colorPrinter.error("Unexpected error: " + e.getMessage());
-            e.printStackTrace();
-            throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
+            throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
         }
     }
 

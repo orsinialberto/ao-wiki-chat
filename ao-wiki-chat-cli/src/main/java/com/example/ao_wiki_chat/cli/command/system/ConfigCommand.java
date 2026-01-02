@@ -1,7 +1,8 @@
 package com.example.ao_wiki_chat.cli.command.system;
 
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
-import com.example.ao_wiki_chat.cli.exception.ApiClientException;
+import com.example.ao_wiki_chat.cli.exception.ConfigException;
+import com.example.ao_wiki_chat.cli.exception.CliException;
 import picocli.CommandLine;
 
 import java.time.Duration;
@@ -98,13 +99,8 @@ public class ConfigCommand implements Runnable {
                 manager.set(key.trim(), value.trim());
                 System.out.println("Configuration updated: " + key + " = " + value);
 
-            } catch (IllegalArgumentException | ApiClientException e) {
-                System.err.println("Error: " + e.getMessage());
+            } catch (IllegalArgumentException | ConfigException e) {
                 throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
-            } catch (Exception e) {
-                System.err.println("Unexpected error: " + e.getMessage());
-                e.printStackTrace();
-                throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
             }
         }
     }
@@ -163,13 +159,8 @@ public class ConfigCommand implements Runnable {
 
                 System.out.println(value);
 
-            } catch (IllegalArgumentException e) {
-                System.err.println("Error: " + e.getMessage());
+            } catch (IllegalArgumentException | ConfigException e) {
                 throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
-            } catch (Exception e) {
-                System.err.println("Unexpected error: " + e.getMessage());
-                e.printStackTrace();
-                throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
             }
         }
 
@@ -237,10 +228,8 @@ public class ConfigCommand implements Runnable {
                 System.out.println("  output.format = " + config.getOutputFormat());
                 System.out.println("  output.colors = " + config.isOutputColors());
 
-            } catch (Exception e) {
-                System.err.println("Unexpected error: " + e.getMessage());
-                e.printStackTrace();
-                throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
+            } catch (ConfigException e) {
+                throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
             }
         }
     }
@@ -282,10 +271,8 @@ public class ConfigCommand implements Runnable {
                 manager.reset();
                 System.out.println("Configuration reset to defaults");
 
-            } catch (Exception e) {
-                System.err.println("Unexpected error: " + e.getMessage());
-                e.printStackTrace();
-                throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
+            } catch (ConfigException e) {
+                throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
             }
         }
     }

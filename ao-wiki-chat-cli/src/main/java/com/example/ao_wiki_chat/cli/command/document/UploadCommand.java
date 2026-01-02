@@ -4,15 +4,16 @@ import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.CliConfig;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
+import com.example.ao_wiki_chat.cli.exception.CliException;
 import com.example.ao_wiki_chat.cli.model.CliDocument;
 import com.example.ao_wiki_chat.cli.model.CliDocumentUpload;
 import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 import com.example.ao_wiki_chat.cli.util.FileValidator;
+import com.example.ao_wiki_chat.cli.util.InputValidator;
 import com.example.ao_wiki_chat.cli.util.ProgressBar;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.UUID;
 
 /**
@@ -117,8 +118,10 @@ public class UploadCommand implements Runnable {
         ColorPrinter colorPrinter = createColorPrinter(config.isOutputColors());
 
         try {
-            // Validate file
-            Path path = Paths.get(filePath);
+            // Validate file path
+            Path path = InputValidator.validateFilePath(filePath);
+            
+            // Validate file properties
             FileValidator fileValidator = createFileValidator(
                     config.getMaxFileSizeBytes(),
                     config.getSupportedFileTypes()
@@ -146,16 +149,12 @@ public class UploadCommand implements Runnable {
                 waitForProcessing(apiClient, uploadResponse.documentId(), timeoutSeconds, config.isOutputColors());
             }
 
-        } catch (IllegalArgumentException e) {
+        } catch (CliException | IllegalArgumentException e) {
             colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
             colorPrinter.error("API Error: " + e.getMessage());
-            throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
-        } catch (Exception e) {
-            colorPrinter.error("Unexpected error: " + e.getMessage());
-            e.printStackTrace();
-            throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
+            throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
         }
     }
 

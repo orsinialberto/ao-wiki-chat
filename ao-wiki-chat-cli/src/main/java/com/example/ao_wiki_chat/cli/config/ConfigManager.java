@@ -1,6 +1,6 @@
 package com.example.ao_wiki_chat.cli.config;
 
-import com.example.ao_wiki_chat.cli.exception.ApiClientException;
+import com.example.ao_wiki_chat.cli.exception.ConfigException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +54,7 @@ public final class ConfigManager {
     private Path initializeConfigFilePath() {
         String userHome = System.getProperty("user.home");
         if (userHome == null) {
-            throw new ApiClientException("Cannot determine user home directory");
+            throw new ConfigException("Cannot determine user home directory");
         }
         return Paths.get(userHome, CONFIG_DIR_NAME, CONFIG_FILE_NAME);
     }
@@ -173,7 +173,7 @@ public final class ConfigManager {
 
             this.currentConfig = config;
         } catch (IOException e) {
-            throw new ApiClientException("Failed to save config file: " + configFile, e);
+            throw new ConfigException("Failed to save config file: " + configFile, e);
         }
     }
 
@@ -226,7 +226,7 @@ public final class ConfigManager {
                 builder.supportedFileTypes(value);
                 break;
             default:
-                throw new ApiClientException("Unknown configuration key: " + key);
+                throw new ConfigException("Unknown configuration key: " + key);
         }
 
         CliConfig newConfig = builder.build();
@@ -250,17 +250,17 @@ public final class ConfigManager {
      */
     private void validateApiUrl(String url) {
         if (url == null || url.isBlank()) {
-            throw new ApiClientException("API URL cannot be empty");
+            throw new ConfigException("API URL cannot be empty");
         }
 
         try {
             URI uri = new URI(url.trim());
             String scheme = uri.getScheme();
             if (scheme == null || (!scheme.equals("http") && !scheme.equals("https"))) {
-                throw new ApiClientException("API URL must use http or https scheme");
+                throw new ConfigException("API URL must use http or https scheme");
             }
         } catch (URISyntaxException e) {
-            throw new ApiClientException("Invalid API URL format: " + url, e);
+            throw new ConfigException("Invalid API URL format: " + url, e);
         }
     }
 
@@ -274,17 +274,17 @@ public final class ConfigManager {
      */
     private int parseTimeout(String value, String key) {
         if (value == null || value.isBlank()) {
-            throw new ApiClientException("Timeout value cannot be empty for key: " + key);
+            throw new ConfigException("Timeout value cannot be empty for key: " + key);
         }
 
         try {
             int seconds = Integer.parseInt(value.trim());
             if (seconds <= 0) {
-                throw new ApiClientException("Timeout must be greater than 0 for key: " + key);
+                throw new ConfigException("Timeout must be greater than 0 for key: " + key);
             }
             return seconds;
         } catch (NumberFormatException e) {
-            throw new ApiClientException("Invalid timeout value for key " + key + ": " + value, e);
+            throw new ConfigException("Invalid timeout value for key " + key + ": " + value, e);
         }
     }
 
@@ -299,7 +299,7 @@ public final class ConfigManager {
      */
     private long parseFileSize(String value, String key) {
         if (value == null || value.isBlank()) {
-            throw new ApiClientException("File size value cannot be empty for key: " + key);
+            throw new ConfigException("File size value cannot be empty for key: " + key);
         }
 
         String trimmed = value.trim().toUpperCase();
@@ -317,7 +317,7 @@ public final class ConfigManager {
                 return Long.parseLong(trimmed);
             }
         } catch (NumberFormatException e) {
-            throw new ApiClientException("Invalid file size value for key " + key + ": " + value, e);
+            throw new ConfigException("Invalid file size value for key " + key + ": " + value, e);
         }
     }
 

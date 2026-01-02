@@ -2,6 +2,7 @@ package com.example.ao_wiki_chat.cli.config;
 
 import com.example.ao_wiki_chat.cli.exception.ApiClientException;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
+import com.example.ao_wiki_chat.cli.util.ErrorMessageFormatter;
 import com.example.ao_wiki_chat.cli.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -377,10 +378,10 @@ public class ApiClient {
                 }
 
                 // Don't retry on 4xx errors
-                throw new ApiException(
-                        String.format("API request failed with status %d: %s", statusCode, errorBody),
-                        statusCode
+                String userMessage = ErrorMessageFormatter.formatError(
+                        new ApiException(errorBody, statusCode)
                 );
+                throw new ApiException(userMessage, statusCode);
             }
         } catch (IOException e) {
             // Retry on network errors
@@ -398,7 +399,14 @@ public class ApiClient {
                 return executeRequestWithRetry(request, responseType, attempt + 1);
             }
 
-            throw new ApiClientException("Network error after " + (attempt + 1) + " attempts", e);
+            String errorMessage = ErrorMessageFormatter.formatError(e);
+            if (e instanceof java.net.SocketTimeoutException) {
+                throw new ApiClientException("Request timed out. " + errorMessage, e);
+            } else if (e instanceof java.net.ConnectException) {
+                throw new ApiClientException("Cannot connect to server. " + errorMessage, e);
+            } else {
+                throw new ApiClientException("Network error after " + (attempt + 1) + " attempts: " + errorMessage, e);
+            }
         }
     }
 

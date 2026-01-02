@@ -1,6 +1,6 @@
 package com.example.ao_wiki_chat.cli.config;
 
-import com.example.ao_wiki_chat.cli.exception.ApiClientException;
+import com.example.ao_wiki_chat.cli.exception.ConfigException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -284,7 +284,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("unknown.key", "value"))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("Unknown configuration key");
     }
 
@@ -318,7 +318,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.url", ""))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("API URL cannot be empty");
     }
 
@@ -329,7 +329,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.url", "   "))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("API URL cannot be empty");
     }
 
@@ -340,7 +340,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.url", "ftp://example.com"))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("API URL must use http or https scheme");
     }
 
@@ -351,7 +351,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.url", "not a url"))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("Invalid API URL format");
     }
 
@@ -388,7 +388,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.timeout.connect", "0"))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("Timeout must be greater than 0");
     }
 
@@ -399,7 +399,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.timeout.connect", "-5"))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("Timeout must be greater than 0");
     }
 
@@ -410,7 +410,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.timeout.connect", "not-a-number"))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("Invalid timeout value");
     }
 
@@ -421,7 +421,7 @@ class ConfigManagerTest {
 
         // When/Then
         assertThatThrownBy(() -> configManager.set("api.timeout.connect", ""))
-                .isInstanceOf(ApiClientException.class)
+                .isInstanceOf(ConfigException.class)
                 .hasMessageContaining("Timeout value cannot be empty");
     }
 

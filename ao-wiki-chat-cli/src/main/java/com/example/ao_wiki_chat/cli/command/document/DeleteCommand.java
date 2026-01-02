@@ -3,7 +3,9 @@ package com.example.ao_wiki_chat.cli.command.document;
 import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
+import com.example.ao_wiki_chat.cli.exception.CliException;
 import com.example.ao_wiki_chat.cli.util.ColorPrinter;
+import com.example.ao_wiki_chat.cli.util.InputValidator;
 import picocli.CommandLine;
 
 import java.util.Scanner;
@@ -67,7 +69,7 @@ public class DeleteCommand implements Runnable {
 
         try {
             // Validate UUID
-            UUID id = DocumentCommandUtils.validateUuid(documentId);
+            UUID id = InputValidator.validateUuid(documentId);
 
             // Confirm deletion unless --confirm is used
             if (!skipConfirmation) {
@@ -88,16 +90,12 @@ public class DeleteCommand implements Runnable {
             apiClient.deleteDocument(id);
             colorPrinter.success("Document deleted successfully: " + id);
 
-        } catch (IllegalArgumentException e) {
+        } catch (CliException | IllegalArgumentException e) {
             colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
             colorPrinter.error("API Error: " + e.getMessage());
-            throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
-        } catch (Exception e) {
-            colorPrinter.error("Unexpected error: " + e.getMessage());
-            e.printStackTrace();
-            throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
+            throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
         }
     }
 }
