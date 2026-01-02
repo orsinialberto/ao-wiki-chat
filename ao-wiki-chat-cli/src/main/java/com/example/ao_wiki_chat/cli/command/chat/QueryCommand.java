@@ -6,6 +6,7 @@ import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliChatResponse;
 import com.example.ao_wiki_chat.cli.output.OutputFormatter;
 import com.example.ao_wiki_chat.cli.output.OutputFormatterFactory;
+import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 import picocli.CommandLine;
 
 /**
@@ -73,8 +74,21 @@ public class QueryCommand implements Runnable {
         return OutputFormatterFactory.create(format, configManager.get());
     }
 
+    /**
+     * Creates a ColorPrinter instance. Can be overridden in tests.
+     *
+     * @param colorsEnabled whether colors are enabled
+     * @return ColorPrinter instance
+     */
+    ColorPrinter createColorPrinter(boolean colorsEnabled) {
+        return new ColorPrinter(colorsEnabled);
+    }
+
     @Override
     public void run() {
+        ConfigManager configManager = new ConfigManager();
+        ColorPrinter colorPrinter = createColorPrinter(configManager.get().isOutputColors());
+
         try {
             // Validate query
             ChatCommandUtils.validateQuery(query);
@@ -90,7 +104,7 @@ public class QueryCommand implements Runnable {
             String effectiveSessionId = sessionId;
             if (effectiveSessionId == null || effectiveSessionId.isBlank()) {
                 effectiveSessionId = ChatCommandUtils.generateSessionId();
-                System.out.println("📝 Session ID: " + effectiveSessionId);
+                colorPrinter.info("Session ID: " + effectiveSessionId);
             } else {
                 ChatCommandUtils.validateSessionId(effectiveSessionId);
             }
@@ -106,13 +120,13 @@ public class QueryCommand implements Runnable {
             System.out.println(formatter.formatChatResponse(response, showSources));
 
         } catch (IllegalArgumentException e) {
-            System.err.println("Error: " + e.getMessage());
+            colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
-            System.err.println("API Error: " + e.getMessage());
+            colorPrinter.error("API Error: " + e.getMessage());
             throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
         } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
+            colorPrinter.error("Unexpected error: " + e.getMessage());
             e.printStackTrace();
             throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
         }

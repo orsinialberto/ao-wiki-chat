@@ -24,6 +24,8 @@ class CliConfigTest {
         assertThat(config.getApiWriteTimeout()).isEqualTo(Duration.ofSeconds(CliConfig.DEFAULT_WRITE_TIMEOUT_SECONDS));
         assertThat(config.getOutputFormat()).isEqualTo(CliConfig.DEFAULT_OUTPUT_FORMAT);
         assertThat(config.isOutputColors()).isEqualTo(CliConfig.DEFAULT_OUTPUT_COLORS);
+        assertThat(config.getMaxFileSizeBytes()).isEqualTo(CliConfig.DEFAULT_MAX_FILE_SIZE_BYTES);
+        assertThat(config.getSupportedFileTypes()).isEqualTo(CliConfig.DEFAULT_SUPPORTED_FILE_TYPES);
     }
 
     @Test
@@ -119,6 +121,28 @@ class CliConfigTest {
         assertThat(config.getApiWriteTimeout()).isEqualTo(Duration.ofSeconds(100));
         assertThat(config.getOutputFormat()).isEqualTo("json");
         assertThat(config.isOutputColors()).isFalse();
+    }
+
+    @Test
+    void builderWhenMaxFileSizeIsSetReturnsConfigWithCustomSize() {
+        // When
+        CliConfig config = CliConfig.builder()
+                .maxFileSizeBytes(50 * 1024 * 1024) // 50 MB
+                .build();
+
+        // Then
+        assertThat(config.getMaxFileSizeBytes()).isEqualTo(50 * 1024 * 1024);
+    }
+
+    @Test
+    void builderWhenSupportedFileTypesIsSetReturnsConfigWithCustomTypes() {
+        // When
+        CliConfig config = CliConfig.builder()
+                .supportedFileTypes("pdf,txt,docx")
+                .build();
+
+        // Then
+        assertThat(config.getSupportedFileTypes()).isEqualTo("pdf,txt,docx");
     }
 
     @Test

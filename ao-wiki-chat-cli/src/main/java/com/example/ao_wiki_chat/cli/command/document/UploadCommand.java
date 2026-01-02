@@ -1,17 +1,19 @@
 package com.example.ao_wiki_chat.cli.command.document;
 
 import com.example.ao_wiki_chat.cli.config.ApiClient;
+import com.example.ao_wiki_chat.cli.config.CliConfig;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDocument;
 import com.example.ao_wiki_chat.cli.model.CliDocumentUpload;
+import com.example.ao_wiki_chat.cli.util.ColorPrinter;
+import com.example.ao_wiki_chat.cli.util.FileValidator;
+import com.example.ao_wiki_chat.cli.util.ProgressBar;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Command for uploading documents to the WikiChat backend.
@@ -68,42 +70,90 @@ public class UploadCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates a ConfigManager instance. Can be overridden in tests.
+     *
+     * @return ConfigManager instance
+     */
+    ConfigManager createConfigManager() {
+        return new ConfigManager();
+    }
+
+    /**
+     * Creates a ColorPrinter instance. Can be overridden in tests.
+     *
+     * @param colorsEnabled whether colors are enabled
+     * @return ColorPrinter instance
+     */
+    ColorPrinter createColorPrinter(boolean colorsEnabled) {
+        return new ColorPrinter(colorsEnabled);
+    }
+
+    /**
+     * Creates a FileValidator instance. Can be overridden in tests.
+     *
+     * @param maxFileSizeBytes   maximum file size
+     * @param supportedFileTypes supported file types
+     * @return FileValidator instance
+     */
+    FileValidator createFileValidator(long maxFileSizeBytes, String supportedFileTypes) {
+        return new FileValidator(maxFileSizeBytes, supportedFileTypes);
+    }
+
+    /**
+     * Creates a ProgressBar instance. Can be overridden in tests.
+     *
+     * @param colorsEnabled whether colors are enabled
+     * @return ProgressBar instance
+     */
+    ProgressBar createProgressBar(boolean colorsEnabled) {
+        return new ProgressBar(colorsEnabled);
+    }
+
     @Override
     public void run() {
+        ConfigManager configManager = createConfigManager();
+        CliConfig config = configManager.get();
+        ColorPrinter colorPrinter = createColorPrinter(config.isOutputColors());
+
         try {
             // Validate file
             Path path = Paths.get(filePath);
-            DocumentCommandUtils.validateFile(path);
+            FileValidator fileValidator = createFileValidator(
+                    config.getMaxFileSizeBytes(),
+                    config.getSupportedFileTypes()
+            );
+            fileValidator.validate(path);
 
             // Initialize API client
             ApiClient apiClient = createApiClient();
 
             // Upload document
-            System.out.println("Uploading document: " + path.getFileName());
+            colorPrinter.info("Uploading document: " + path.getFileName());
             CliDocumentUpload uploadResponse = apiClient.uploadDocument(path);
 
             if ("json".equalsIgnoreCase(format)) {
                 System.out.println(uploadResponse);
             } else {
-                System.out.println("Document uploaded successfully!");
-                System.out.println("Document ID: " + uploadResponse.documentId());
-                System.out.println("Status: " + uploadResponse.status());
-                System.out.println("Filename: " + uploadResponse.filename());
+                colorPrinter.success("Document uploaded successfully!");
+                colorPrinter.println("Document ID: " + uploadResponse.documentId());
+                colorPrinter.println("Status: " + uploadResponse.status());
+                colorPrinter.println("Filename: " + uploadResponse.filename());
             }
 
             // Wait for processing if requested
             if (wait) {
-                waitForProcessing(apiClient, uploadResponse.documentId(), timeoutSeconds);
+                waitForProcessing(apiClient, uploadResponse.documentId(), timeoutSeconds, config.isOutputColors());
             }
 
         } catch (IllegalArgumentException e) {
-            System.err.println("Error: " + e.getMessage());
+            colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
-            System.err.println("API Error: " + e.getMessage());
+            colorPrinter.error("API Error: " + e.getMessage());
             throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
         } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
+            colorPrinter.error("Unexpected error: " + e.getMessage());
             e.printStackTrace();
             throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
         }
@@ -112,12 +162,16 @@ public class UploadCommand implements Runnable {
     /**
      * Waits for document processing to complete, polling the status.
      *
-     * @param apiClient  the API client
-     * @param documentId the document ID
+     * @param apiClient     the API client
+     * @param documentId    the document ID
      * @param timeoutSeconds the timeout in seconds
+     * @param colorsEnabled whether colors are enabled
      */
-    private void waitForProcessing(ApiClient apiClient, UUID documentId, int timeoutSeconds) {
-        System.out.println("Waiting for processing to complete (timeout: " + timeoutSeconds + "s)...");
+    private void waitForProcessing(ApiClient apiClient, UUID documentId, int timeoutSeconds, boolean colorsEnabled) {
+        ColorPrinter colorPrinter = createColorPrinter(colorsEnabled);
+        ProgressBar progressBar = createProgressBar(colorsEnabled);
+
+        colorPrinter.info("Waiting for processing to complete (timeout: " + timeoutSeconds + "s)...");
 
         long startTime = System.currentTimeMillis();
         long timeoutMillis = timeoutSeconds * 1000L;
@@ -126,8 +180,10 @@ public class UploadCommand implements Runnable {
         try {
             while (true) {
                 // Check timeout
-                if (System.currentTimeMillis() - startTime > timeoutMillis) {
-                    System.err.println("Timeout waiting for document processing");
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (elapsed > timeoutMillis) {
+                    progressBar.reset();
+                    colorPrinter.error("Timeout waiting for document processing");
                     throw new CommandLine.ExecutionException(spec.commandLine(), "Timeout waiting for document processing");
                 }
 
@@ -135,19 +191,25 @@ public class UploadCommand implements Runnable {
                 CliDocument document = apiClient.getDocument(documentId);
                 String status = document.status();
 
+                // Calculate progress based on elapsed time (rough estimate)
+                double progress = Math.min(0.95, elapsed / (double) timeoutMillis);
+                String statusMessage = "Status: " + status;
+
                 // Show progress
-                System.out.print("Status: " + status);
                 if ("PROCESSING".equals(status)) {
-                    System.out.print(" (waiting...)");
+                    progressBar.update(progress, statusMessage);
+                } else {
+                    progressBar.update(1.0, statusMessage);
                 }
-                System.out.println();
 
                 // Check if processing is complete
                 if ("COMPLETED".equals(status)) {
-                    System.out.println("Document processing completed successfully!");
+                    progressBar.complete("Processing completed");
+                    colorPrinter.success("Document processing completed successfully!");
                     return;
                 } else if ("FAILED".equals(status)) {
-                    System.err.println("Document processing failed");
+                    progressBar.reset();
+                    colorPrinter.error("Document processing failed");
                     throw new CommandLine.ExecutionException(spec.commandLine(), "Document processing failed");
                 }
 
@@ -156,10 +218,12 @@ public class UploadCommand implements Runnable {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Interrupted while waiting for processing");
+            progressBar.reset();
+            colorPrinter.error("Interrupted while waiting for processing");
             throw new CommandLine.ExecutionException(spec.commandLine(), "Interrupted while waiting for processing", e);
         } catch (ApiException e) {
-            System.err.println("Error checking document status: " + e.getMessage());
+            progressBar.reset();
+            colorPrinter.error("Error checking document status: " + e.getMessage());
             throw new CommandLine.ExecutionException(spec.commandLine(), "Error checking document status: " + e.getMessage(), e);
         }
     }

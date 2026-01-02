@@ -5,6 +5,7 @@ import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDatabaseHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliGeminiHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliHealthResponse;
+import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import picocli.CommandLine;
@@ -65,7 +66,7 @@ class HealthCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(0);
         String output = outputStream.toString();
-        assertThat(output).contains("✅");
+        assertThat(output).contains("✓");
         assertThat(output).contains("System");
         assertThat(output).contains("UP");
         verify(apiClient, times(1)).health();
@@ -92,7 +93,7 @@ class HealthCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(1);
         String output = outputStream.toString();
-        assertThat(output).contains("❌");
+        assertThat(output).contains("✗");
         assertThat(output).contains("System");
         assertThat(output).contains("DOWN");
         verify(apiClient, times(1)).health();
@@ -119,7 +120,7 @@ class HealthCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(0);
         String output = outputStream.toString();
-        assertThat(output).contains("✅");
+        assertThat(output).contains("✓");
         assertThat(output).contains("Database");
         assertThat(output).contains("UP");
         verify(apiClient, times(1)).healthDb();
@@ -148,7 +149,7 @@ class HealthCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(1);
         String output = outputStream.toString();
-        assertThat(output).contains("❌");
+        assertThat(output).contains("✗");
         assertThat(output).contains("Database");
         assertThat(output).contains("DOWN");
     }
@@ -174,7 +175,7 @@ class HealthCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(0);
         String output = outputStream.toString();
-        assertThat(output).contains("✅");
+        assertThat(output).contains("✓");
         assertThat(output).contains("Gemini");
         assertThat(output).contains("UP");
         verify(apiClient, times(1)).healthGemini();
@@ -203,7 +204,7 @@ class HealthCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(1);
         String output = outputStream.toString();
-        assertThat(output).contains("❌");
+        assertThat(output).contains("✗");
         assertThat(output).contains("Gemini");
         assertThat(output).contains("DOWN");
     }

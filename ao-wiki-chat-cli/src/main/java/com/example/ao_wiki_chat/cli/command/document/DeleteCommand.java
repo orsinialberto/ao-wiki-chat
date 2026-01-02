@@ -3,6 +3,7 @@ package com.example.ao_wiki_chat.cli.command.document;
 import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
+import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 import picocli.CommandLine;
 
 import java.util.Scanner;
@@ -49,8 +50,21 @@ public class DeleteCommand implements Runnable {
         );
     }
 
+    /**
+     * Creates a ColorPrinter instance. Can be overridden in tests.
+     *
+     * @param colorsEnabled whether colors are enabled
+     * @return ColorPrinter instance
+     */
+    ColorPrinter createColorPrinter(boolean colorsEnabled) {
+        return new ColorPrinter(colorsEnabled);
+    }
+
     @Override
     public void run() {
+        ConfigManager configManager = new ConfigManager();
+        ColorPrinter colorPrinter = createColorPrinter(configManager.get().isOutputColors());
+
         try {
             // Validate UUID
             UUID id = DocumentCommandUtils.validateUuid(documentId);
@@ -62,7 +76,7 @@ public class DeleteCommand implements Runnable {
                 String confirmation = scanner.nextLine().trim().toLowerCase();
 
                 if (!"yes".equals(confirmation) && !"y".equals(confirmation)) {
-                    System.out.println("Deletion cancelled.");
+                    colorPrinter.warning("Deletion cancelled.");
                     return;
                 }
             }
@@ -72,16 +86,16 @@ public class DeleteCommand implements Runnable {
 
             // Delete document
             apiClient.deleteDocument(id);
-            System.out.println("Document deleted successfully: " + id);
+            colorPrinter.success("Document deleted successfully: " + id);
 
         } catch (IllegalArgumentException e) {
-            System.err.println("Error: " + e.getMessage());
+            colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
-            System.err.println("API Error: " + e.getMessage());
+            colorPrinter.error("API Error: " + e.getMessage());
             throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
         } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
+            colorPrinter.error("Unexpected error: " + e.getMessage());
             e.printStackTrace();
             throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
         }

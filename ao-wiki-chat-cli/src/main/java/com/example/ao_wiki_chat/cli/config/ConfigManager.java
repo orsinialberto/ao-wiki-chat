@@ -31,6 +31,8 @@ public final class ConfigManager {
     private static final String KEY_API_WRITE_TIMEOUT = "api.timeout.write";
     private static final String KEY_OUTPUT_FORMAT = "output.format";
     private static final String KEY_OUTPUT_COLORS = "output.colors";
+    private static final String KEY_MAX_FILE_SIZE = "file.maxSize";
+    private static final String KEY_SUPPORTED_FILE_TYPES = "file.supportedTypes";
 
     private final Path configFile;
     private CliConfig currentConfig;
@@ -124,6 +126,17 @@ public final class ConfigManager {
             builder.outputColors(Boolean.parseBoolean(outputColors.trim()));
         }
 
+        String maxFileSize = properties.getProperty(KEY_MAX_FILE_SIZE);
+        if (maxFileSize != null && !maxFileSize.isBlank()) {
+            long bytes = parseFileSize(maxFileSize, KEY_MAX_FILE_SIZE);
+            builder.maxFileSizeBytes(bytes);
+        }
+
+        String supportedFileTypes = properties.getProperty(KEY_SUPPORTED_FILE_TYPES);
+        if (supportedFileTypes != null && !supportedFileTypes.isBlank()) {
+            builder.supportedFileTypes(supportedFileTypes.trim());
+        }
+
         CliConfig config = builder.build();
         this.currentConfig = config;
         return config;
@@ -150,6 +163,8 @@ public final class ConfigManager {
             properties.setProperty(KEY_API_WRITE_TIMEOUT, String.valueOf(config.getApiWriteTimeout().getSeconds()));
             properties.setProperty(KEY_OUTPUT_FORMAT, config.getOutputFormat());
             properties.setProperty(KEY_OUTPUT_COLORS, String.valueOf(config.isOutputColors()));
+            properties.setProperty(KEY_MAX_FILE_SIZE, String.valueOf(config.getMaxFileSizeBytes()));
+            properties.setProperty(KEY_SUPPORTED_FILE_TYPES, config.getSupportedFileTypes());
 
             try (OutputStream output = Files.newOutputStream(configFile)) {
                 properties.store(output, "WikiChat CLI Configuration");
@@ -202,6 +217,13 @@ public final class ConfigManager {
                 break;
             case KEY_OUTPUT_COLORS:
                 builder.outputColors(Boolean.parseBoolean(value));
+                break;
+            case KEY_MAX_FILE_SIZE:
+                long maxFileSize = parseFileSize(value, KEY_MAX_FILE_SIZE);
+                builder.maxFileSizeBytes(maxFileSize);
+                break;
+            case KEY_SUPPORTED_FILE_TYPES:
+                builder.supportedFileTypes(value);
                 break;
             default:
                 throw new ApiClientException("Unknown configuration key: " + key);
@@ -263,6 +285,39 @@ public final class ConfigManager {
             return seconds;
         } catch (NumberFormatException e) {
             throw new ApiClientException("Invalid timeout value for key " + key + ": " + value, e);
+        }
+    }
+
+    /**
+     * Parses a file size value from a string.
+     * Supports formats: "100" (bytes), "100KB", "100MB", "100GB".
+     *
+     * @param value the string value
+     * @param key   the property key (for error messages)
+     * @return the parsed file size in bytes
+     * @throws ApiClientException if the value is invalid
+     */
+    private long parseFileSize(String value, String key) {
+        if (value == null || value.isBlank()) {
+            throw new ApiClientException("File size value cannot be empty for key: " + key);
+        }
+
+        String trimmed = value.trim().toUpperCase();
+        try {
+            if (trimmed.endsWith("GB")) {
+                double gb = Double.parseDouble(trimmed.substring(0, trimmed.length() - 2));
+                return (long) (gb * 1024 * 1024 * 1024);
+            } else if (trimmed.endsWith("MB")) {
+                double mb = Double.parseDouble(trimmed.substring(0, trimmed.length() - 2));
+                return (long) (mb * 1024 * 1024);
+            } else if (trimmed.endsWith("KB")) {
+                double kb = Double.parseDouble(trimmed.substring(0, trimmed.length() - 2));
+                return (long) (kb * 1024);
+            } else {
+                return Long.parseLong(trimmed);
+            }
+        } catch (NumberFormatException e) {
+            throw new ApiClientException("Invalid file size value for key " + key + ": " + value, e);
         }
     }
 

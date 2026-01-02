@@ -19,6 +19,10 @@ public final class CliConfig {
     private final String outputFormat;
     private final boolean outputColors;
 
+    // File Validation Configuration
+    private final long maxFileSizeBytes;
+    private final String supportedFileTypes;
+
     // Default values
     public static final String DEFAULT_API_URL = "http://localhost:8080";
     public static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 30;
@@ -26,6 +30,8 @@ public final class CliConfig {
     public static final int DEFAULT_WRITE_TIMEOUT_SECONDS = 60;
     public static final String DEFAULT_OUTPUT_FORMAT = "text";
     public static final boolean DEFAULT_OUTPUT_COLORS = true;
+    public static final long DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
+    public static final String DEFAULT_SUPPORTED_FILE_TYPES = "pdf,txt,md,doc,docx";
 
     private CliConfig(Builder builder) {
         this.apiUrl = builder.apiUrl;
@@ -34,6 +40,8 @@ public final class CliConfig {
         this.apiWriteTimeout = builder.apiWriteTimeout;
         this.outputFormat = builder.outputFormat;
         this.outputColors = builder.outputColors;
+        this.maxFileSizeBytes = builder.maxFileSizeBytes;
+        this.supportedFileTypes = builder.supportedFileTypes;
     }
 
     /**
@@ -57,7 +65,9 @@ public final class CliConfig {
                 .apiReadTimeout(this.apiReadTimeout)
                 .apiWriteTimeout(this.apiWriteTimeout)
                 .outputFormat(this.outputFormat)
-                .outputColors(this.outputColors);
+                .outputColors(this.outputColors)
+                .maxFileSizeBytes(this.maxFileSizeBytes)
+                .supportedFileTypes(this.supportedFileTypes);
     }
 
     /**
@@ -93,6 +103,14 @@ public final class CliConfig {
         return outputColors;
     }
 
+    public long getMaxFileSizeBytes() {
+        return maxFileSizeBytes;
+    }
+
+    public String getSupportedFileTypes() {
+        return supportedFileTypes;
+    }
+
     /**
      * Builder class for CliConfig.
      */
@@ -103,6 +121,8 @@ public final class CliConfig {
         private Duration apiWriteTimeout = Duration.ofSeconds(DEFAULT_WRITE_TIMEOUT_SECONDS);
         private String outputFormat = DEFAULT_OUTPUT_FORMAT;
         private boolean outputColors = DEFAULT_OUTPUT_COLORS;
+        private long maxFileSizeBytes = DEFAULT_MAX_FILE_SIZE_BYTES;
+        private String supportedFileTypes = DEFAULT_SUPPORTED_FILE_TYPES;
 
         private Builder() {
         }
@@ -149,6 +169,16 @@ public final class CliConfig {
 
         public Builder outputColors(boolean outputColors) {
             this.outputColors = outputColors;
+            return this;
+        }
+
+        public Builder maxFileSizeBytes(long maxFileSizeBytes) {
+            this.maxFileSizeBytes = maxFileSizeBytes;
+            return this;
+        }
+
+        public Builder supportedFileTypes(String supportedFileTypes) {
+            this.supportedFileTypes = supportedFileTypes;
             return this;
         }
 

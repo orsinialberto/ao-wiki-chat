@@ -6,6 +6,7 @@ import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDatabaseHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliGeminiHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliHealthResponse;
+import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 import picocli.CommandLine;
 
 /**
@@ -60,8 +61,21 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
         );
     }
 
+    /**
+     * Creates a ColorPrinter instance. Can be overridden in tests.
+     *
+     * @param colorsEnabled whether colors are enabled
+     * @return ColorPrinter instance
+     */
+    ColorPrinter createColorPrinter(boolean colorsEnabled) {
+        return new ColorPrinter(colorsEnabled);
+    }
+
     @Override
     public void run() {
+        ConfigManager configManager = new ConfigManager();
+        ColorPrinter colorPrinter = createColorPrinter(configManager.get().isOutputColors());
+
         try {
             // Validate format
             if (!isValidFormat(format)) {
@@ -79,31 +93,31 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
 
             if (dbOnly) {
                 CliDatabaseHealthResponse response = apiClient.healthDb();
-                String output = formatDatabaseHealth(response, format);
+                String output = formatDatabaseHealth(response, format, colorPrinter);
                 System.out.println(output);
                 exitCode = "UP".equalsIgnoreCase(response.status()) ? 0 : 1;
             } else if (geminiOnly) {
                 CliGeminiHealthResponse response = apiClient.healthGemini();
-                String output = formatGeminiHealth(response, format);
+                String output = formatGeminiHealth(response, format, colorPrinter);
                 System.out.println(output);
                 exitCode = "UP".equalsIgnoreCase(response.status()) ? 0 : 1;
             } else {
                 CliHealthResponse response = apiClient.health();
-                String output = formatGeneralHealth(response, format);
+                String output = formatGeneralHealth(response, format, colorPrinter);
                 System.out.println(output);
                 exitCode = "UP".equalsIgnoreCase(response.status()) ? 0 : 1;
             }
 
         } catch (IllegalArgumentException e) {
-            System.err.println("Error: " + e.getMessage());
+            colorPrinter.error("Error: " + e.getMessage());
             exitCode = 1;
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
-            System.err.println("API Error: " + e.getMessage());
+            colorPrinter.error("API Error: " + e.getMessage());
             exitCode = 1;
             throw new CommandLine.ExecutionException(spec.commandLine(), "API Error: " + e.getMessage(), e);
         } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
+            colorPrinter.error("Unexpected error: " + e.getMessage());
             e.printStackTrace();
             exitCode = 1;
             throw new CommandLine.ExecutionException(spec.commandLine(), "Unexpected error: " + e.getMessage(), e);
@@ -118,55 +132,63 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
     /**
      * Formats general health response.
      *
-     * @param response the health response
-     * @param format   the output format
+     * @param response     the health response
+     * @param format       the output format
+     * @param colorPrinter the color printer instance
      * @return formatted output string
      */
-    private String formatGeneralHealth(CliHealthResponse response, String format) {
+    private String formatGeneralHealth(CliHealthResponse response, String format, ColorPrinter colorPrinter) {
         if ("json".equalsIgnoreCase(format)) {
             return formatHealthJson(response.status());
         }
-        return formatHealthText("System", response.status());
+        return formatHealthText("System", response.status(), colorPrinter);
     }
 
     /**
      * Formats database health response.
      *
-     * @param response the database health response
-     * @param format   the output format
+     * @param response     the database health response
+     * @param format       the output format
+     * @param colorPrinter the color printer instance
      * @return formatted output string
      */
-    private String formatDatabaseHealth(CliDatabaseHealthResponse response, String format) {
+    private String formatDatabaseHealth(CliDatabaseHealthResponse response, String format, ColorPrinter colorPrinter) {
         if ("json".equalsIgnoreCase(format)) {
             return formatDatabaseHealthJson(response.status(), response.database());
         }
-        return formatHealthText("Database", response.status());
+        return formatHealthText("Database", response.status(), colorPrinter);
     }
 
     /**
      * Formats Gemini health response.
      *
-     * @param response the Gemini health response
-     * @param format   the output format
+     * @param response     the Gemini health response
+     * @param format       the output format
+     * @param colorPrinter the color printer instance
      * @return formatted output string
      */
-    private String formatGeminiHealth(CliGeminiHealthResponse response, String format) {
+    private String formatGeminiHealth(CliGeminiHealthResponse response, String format, ColorPrinter colorPrinter) {
         if ("json".equalsIgnoreCase(format)) {
             return formatGeminiHealthJson(response.status(), response.gemini());
         }
-        return formatHealthText("Gemini", response.status());
+        return formatHealthText("Gemini", response.status(), colorPrinter);
     }
 
     /**
-     * Formats health status as text with emoji indicators.
+     * Formats health status as text with colored output.
      *
-     * @param component the component name
-     * @param status    the status value
+     * @param component    the component name
+     * @param status       the status value
+     * @param colorPrinter the color printer instance
      * @return formatted text
      */
-    private String formatHealthText(String component, String status) {
-        String indicator = "UP".equalsIgnoreCase(status) ? "✅" : "❌";
-        return String.format("%s %s: %s", indicator, component, status);
+    private String formatHealthText(String component, String status, ColorPrinter colorPrinter) {
+        String message = component + ": " + status;
+        if ("UP".equalsIgnoreCase(status)) {
+            return colorPrinter.formatColored(message, org.fusesource.jansi.Ansi.Color.GREEN, "✓");
+        } else {
+            return colorPrinter.formatColored(message, org.fusesource.jansi.Ansi.Color.RED, "✗");
+        }
     }
 
     /**
