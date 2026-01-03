@@ -41,6 +41,7 @@ public class Chunk {
     private Integer chunkIndex;
 
     @Convert(converter = VectorAttributeConverter.class)
+    @JdbcTypeCode(SqlTypes.OTHER)
     @Column(columnDefinition = "vector(768)")
     private float[] embedding;
 
