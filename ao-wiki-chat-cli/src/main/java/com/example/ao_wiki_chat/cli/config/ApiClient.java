@@ -383,8 +383,13 @@ public class ApiClient {
                 );
                 throw new ApiException(userMessage, statusCode);
             }
+        } catch (java.net.SocketTimeoutException e) {
+            // Don't retry on timeout - the request might still be processing on the server
+            // User should increase timeout configuration for long-running operations
+            String errorMessage = ErrorMessageFormatter.formatError(e);
+            throw new ApiClientException("Request timed out. " + errorMessage, e);
         } catch (IOException e) {
-            // Retry on network errors
+            // Retry on other network errors (connection failures, etc.)
             if (attempt < MAX_RETRIES) {
                 long delayMs = INITIAL_RETRY_DELAY_MS * (1L << attempt);
                 log.warn("Network error (attempt {}/{}), retrying in {} ms: {}", attempt + 1, MAX_RETRIES, delayMs, e.getMessage());
@@ -400,9 +405,7 @@ public class ApiClient {
             }
 
             String errorMessage = ErrorMessageFormatter.formatError(e);
-            if (e instanceof java.net.SocketTimeoutException) {
-                throw new ApiClientException("Request timed out. " + errorMessage, e);
-            } else if (e instanceof java.net.ConnectException) {
+            if (e instanceof java.net.ConnectException) {
                 throw new ApiClientException("Cannot connect to server. " + errorMessage, e);
             } else {
                 throw new ApiClientException("Network error after " + (attempt + 1) + " attempts: " + errorMessage, e);
