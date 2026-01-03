@@ -1,5 +1,6 @@
-package com.example.ao_wiki_chat.controller;
+package com.example.ao_wiki_chat.unit.controller;
 
+import com.example.ao_wiki_chat.controller.ChatController;
 import com.example.ao_wiki_chat.exception.EmbeddingException;
 import com.example.ao_wiki_chat.exception.LLMException;
 import com.example.ao_wiki_chat.exception.VectorSearchException;

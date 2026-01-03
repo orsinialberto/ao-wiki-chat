@@ -1,5 +1,6 @@
-package com.example.ao_wiki_chat.integration.gemini;
+package com.example.ao_wiki_chat.unit.integration.gemini;
 
+import com.example.ao_wiki_chat.integration.gemini.GeminiConfig;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import org.junit.jupiter.api.BeforeEach;

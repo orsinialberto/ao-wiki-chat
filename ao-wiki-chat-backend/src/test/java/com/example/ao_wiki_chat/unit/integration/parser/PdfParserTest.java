@@ -1,6 +1,7 @@
-package com.example.ao_wiki_chat.integration.parser;
+package com.example.ao_wiki_chat.unit.integration.parser;
 
 import com.example.ao_wiki_chat.exception.DocumentParsingException;
+import com.example.ao_wiki_chat.integration.parser.PdfParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;

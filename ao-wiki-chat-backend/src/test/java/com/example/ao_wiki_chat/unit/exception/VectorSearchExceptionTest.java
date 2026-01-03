@@ -1,7 +1,8 @@
-package com.example.ao_wiki_chat.exception;
+package com.example.ao_wiki_chat.unit.exception;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.example.ao_wiki_chat.exception.VectorSearchException;
 import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for VectorSearchException.

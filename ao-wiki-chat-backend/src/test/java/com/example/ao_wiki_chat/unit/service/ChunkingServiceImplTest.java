@@ -1,5 +1,6 @@
-package com.example.ao_wiki_chat.service;
+package com.example.ao_wiki_chat.unit.service;
 
+import com.example.ao_wiki_chat.service.ChunkingService;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;

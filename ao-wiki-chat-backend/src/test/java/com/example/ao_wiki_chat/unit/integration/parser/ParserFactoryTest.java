@@ -1,6 +1,11 @@
-package com.example.ao_wiki_chat.integration.parser;
+package com.example.ao_wiki_chat.unit.integration.parser;
 
 import com.example.ao_wiki_chat.exception.DocumentParsingException;
+import com.example.ao_wiki_chat.integration.parser.DocumentParser;
+import com.example.ao_wiki_chat.integration.parser.HtmlParser;
+import com.example.ao_wiki_chat.integration.parser.MarkdownParser;
+import com.example.ao_wiki_chat.integration.parser.ParserFactory;
+import com.example.ao_wiki_chat.integration.parser.PdfParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -1,5 +1,6 @@
-package com.example.ao_wiki_chat.service;
+package com.example.ao_wiki_chat.unit.service;
 
+import com.example.ao_wiki_chat.service.VectorSearchService;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;

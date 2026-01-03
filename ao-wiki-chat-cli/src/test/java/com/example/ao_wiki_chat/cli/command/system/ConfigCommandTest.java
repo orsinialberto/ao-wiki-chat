@@ -1,12 +1,5 @@
 package com.example.ao_wiki_chat.cli.command.system;
 
-import com.example.ao_wiki_chat.cli.config.ConfigManager;
-import com.example.ao_wiki_chat.cli.exception.ApiClientException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import picocli.CommandLine;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -15,7 +8,13 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.example.ao_wiki_chat.cli.config.ConfigManager;
+
+import picocli.CommandLine;
 
 /**
  * Unit tests for ConfigCommand and its subcommands.
@@ -27,14 +26,12 @@ class ConfigCommandTest {
     private PrintStream originalOut;
     private PrintStream originalErr;
     private Path tempConfigDir;
-    private Path tempConfigFile;
     private String originalUserHome;
 
     @BeforeEach
     void setUp() throws IOException {
         // Create temporary directory for config file
         tempConfigDir = Files.createTempDirectory("wikichat-test-");
-        tempConfigFile = tempConfigDir.resolve(".wikichat").resolve("config.properties");
 
         // Save original user.home and set it to our temp directory
         originalUserHome = System.getProperty("user.home");
@@ -222,7 +219,7 @@ class ConfigCommandTest {
     void getCommandWhenTimeoutKeyReturnsSeconds() {
         // Given
         ConfigManager configManager = new ConfigManager();
-        configManager.set("api.timeout.connect", "60");
+        configManager.set("api.timeout.connect", "45");
 
         ConfigCommand.GetCommand command = new ConfigCommand.GetCommand();
         CommandLine cmd = new CommandLine(command);
@@ -233,7 +230,7 @@ class ConfigCommandTest {
         // Then
         assertThat(exitCode).isEqualTo(0);
         String output = outputStream.toString().trim();
-        assertThat(output).isEqualTo("60");
+        assertThat(output).isEqualTo("45");
     }
 
     @Test
@@ -300,7 +297,9 @@ class ConfigCommandTest {
 
         ConfigManager newConfigManager = new ConfigManager();
         assertThat(newConfigManager.get().getApiUrl()).isEqualTo("http://localhost:8080");
-        assertThat(newConfigManager.get().getApiConnectTimeout()).isEqualTo(Duration.ofSeconds(30));
+        assertThat(newConfigManager.get().getApiConnectTimeout()).isEqualTo(Duration.ofSeconds(60));
+        assertThat(newConfigManager.get().getApiReadTimeout()).isEqualTo(Duration.ofSeconds(300));
+        assertThat(newConfigManager.get().getApiWriteTimeout()).isEqualTo(Duration.ofSeconds(300));
         assertThat(newConfigManager.get().getOutputFormat()).isEqualTo("text");
     }
 

@@ -1,5 +1,6 @@
-package com.example.ao_wiki_chat.controller;
+package com.example.ao_wiki_chat.unit.controller;
 
+import com.example.ao_wiki_chat.controller.HealthController;
 import com.example.ao_wiki_chat.model.dto.DatabaseHealthResponse;
 import com.example.ao_wiki_chat.model.dto.GeminiHealthResponse;
 import com.example.ao_wiki_chat.model.dto.HealthResponse;

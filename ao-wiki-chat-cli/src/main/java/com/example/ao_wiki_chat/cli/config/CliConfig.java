@@ -25,9 +25,9 @@ public final class CliConfig {
 
     // Default values
     public static final String DEFAULT_API_URL = "http://localhost:8080";
-    public static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 30;
-    public static final int DEFAULT_READ_TIMEOUT_SECONDS = 60;
-    public static final int DEFAULT_WRITE_TIMEOUT_SECONDS = 60;
+    public static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 60;
+    public static final int DEFAULT_READ_TIMEOUT_SECONDS = 300;
+    public static final int DEFAULT_WRITE_TIMEOUT_SECONDS = 300;
     public static final String DEFAULT_OUTPUT_FORMAT = "text";
     public static final boolean DEFAULT_OUTPUT_COLORS = true;
     public static final long DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB

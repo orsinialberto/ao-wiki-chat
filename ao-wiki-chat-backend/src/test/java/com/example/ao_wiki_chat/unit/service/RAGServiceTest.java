@@ -1,5 +1,9 @@
-package com.example.ao_wiki_chat.service;
+package com.example.ao_wiki_chat.unit.service;
 
+import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
+import com.example.ao_wiki_chat.service.LLMService;
+import com.example.ao_wiki_chat.service.RAGService;
+import com.example.ao_wiki_chat.service.VectorSearchService;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;

@@ -1,5 +1,6 @@
-package com.example.ao_wiki_chat.controller;
+package com.example.ao_wiki_chat.unit.controller;
 
+import com.example.ao_wiki_chat.controller.DocumentController;
 import com.example.ao_wiki_chat.model.dto.ChunkResponse;
 import com.example.ao_wiki_chat.model.dto.DocumentListResponse;
 import com.example.ao_wiki_chat.model.dto.DocumentResponse;

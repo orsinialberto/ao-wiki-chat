@@ -27,9 +27,9 @@ public class ApiClient {
     private static final Logger log = LoggerFactory.getLogger(ApiClient.class);
 
     private static final String DEFAULT_BASE_URL = "http://localhost:8080";
-    private static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 30;
-    private static final int DEFAULT_READ_TIMEOUT_SECONDS = 60;
-    private static final int DEFAULT_WRITE_TIMEOUT_SECONDS = 60;
+    private static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 60;
+    private static final int DEFAULT_READ_TIMEOUT_SECONDS = 300;
+    private static final int DEFAULT_WRITE_TIMEOUT_SECONDS = 300;
     private static final int MAX_RETRIES = 3;
     private static final long INITIAL_RETRY_DELAY_MS = 1000;
 

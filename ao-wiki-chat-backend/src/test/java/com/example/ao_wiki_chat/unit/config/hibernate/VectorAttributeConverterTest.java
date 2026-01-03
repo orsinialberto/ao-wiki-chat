@@ -1,10 +1,12 @@
-package com.example.ao_wiki_chat.config.hibernate;
+package com.example.ao_wiki_chat.unit.config.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.example.ao_wiki_chat.config.hibernate.VectorAttributeConverter;
 
 /**
  * Unit tests for VectorAttributeConverter.

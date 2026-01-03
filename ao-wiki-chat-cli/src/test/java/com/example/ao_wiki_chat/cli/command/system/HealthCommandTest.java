@@ -1,21 +1,25 @@
 package com.example.ao_wiki_chat.cli.command.system;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDatabaseHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliGeminiHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliHealthResponse;
 import com.example.ao_wiki_chat.cli.util.ColorPrinter;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
 import picocli.CommandLine;
-
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for HealthCommand.
@@ -247,6 +251,11 @@ class HealthCommandTest {
             ApiClient createApiClient() {
                 return apiClient;
             }
+
+            @Override
+            ColorPrinter createColorPrinter(boolean colorsEnabled) {
+                return new ColorPrinter(false);
+            }
         };
 
         CommandLine cmd = new CommandLine(command);
@@ -255,8 +264,13 @@ class HealthCommandTest {
         int exitCode = cmd.execute("--db", "--format", "json");
 
         // Then
-        assertThat(exitCode).isEqualTo(0);
+        assertThat(exitCode)
+                .as("Exit code should be 0. Error stream: " + errorStream.toString())
+                .isEqualTo(0);
         String output = outputStream.toString().trim();
+        assertThat(output)
+                .as("Output should not be empty. Error stream: " + errorStream.toString())
+                .isNotEmpty();
         assertThat(output).contains("\"status\"");
         assertThat(output).contains("\"database\"");
         assertThat(output).contains("\"UP\"");

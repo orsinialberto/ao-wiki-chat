@@ -1,5 +1,10 @@
-package com.example.ao_wiki_chat.exception;
+package com.example.ao_wiki_chat.unit.exception;
 
+import com.example.ao_wiki_chat.exception.DocumentParsingException;
+import com.example.ao_wiki_chat.exception.EmbeddingException;
+import com.example.ao_wiki_chat.exception.GlobalExceptionHandler;
+import com.example.ao_wiki_chat.exception.LLMException;
+import com.example.ao_wiki_chat.exception.VectorSearchException;
 import com.example.ao_wiki_chat.model.dto.ErrorResponse;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
