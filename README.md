@@ -29,11 +29,6 @@ docker-compose up -d
 # Verify the container is running
 docker-compose ps
 
-# Check database logs
-docker-compose logs postgres
-
-# (Optional) Follow logs in real-time
-docker-compose logs -f postgres
 ```
 
 ### 2. Database Connection Verification
@@ -132,18 +127,27 @@ Messages within conversations.
 
 ### Environment Variables
 
-Create a `.env` file in the project root with:
+Spring Boot reads environment variables from your system environment:
 
-```env
-# Gemini API Key
-GEMINI_API_KEY=your_api_key_here
+**Export in your shell session**
+```bash
+export GEMINI_API_KEY=your_api_key_here
 
-# Database (optional, already configured in docker-compose)
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=wikichat
-DB_USER=wikichat_user
-DB_PASSWORD=wikichat_password
+source ~/.bashrc  # oppure ~/.zshrc
+```
+
+---
+
+## Build and Start Application
+
+### Download Dependences
+```bash
+./mvnw clean install
+```
+
+### Run from project root, specifying the backend module
+```bash
+./mvnw spring-boot:run -pl ao-wiki-chat-backend
 ```
 
 ---
@@ -170,7 +174,7 @@ java -jar ao-wiki-chat-cli/target/ao-wiki-chat-cli-0.0.1-SNAPSHOT.jar --help
 
 ```bash
 # Configure backend URL
-wikichat config set api.url http://localhost:8080/api
+wikichat config set api.url http://localhost:8080
 
 # Check system health
 wikichat health
@@ -199,115 +203,8 @@ For complete CLI documentation, see [CLI_README.md](ao-wiki-chat-cli/CLI_README.
 
 ## 📚 Documentation
 
-- [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) - Complete development plan
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [AGENTS.md](AGENTS.md) - Guidelines for developers and AI agents
-- [SETUP.md](SETUP.md) - Detailed setup guide
 - [CLI_README.md](ao-wiki-chat-cli/CLI_README.md) - CLI user guide and reference
 - [docs/CHUNKING_LOGIC.md](docs/CHUNKING_LOGIC.md) - Chunking algorithm explained
 
 ---
-
-## 🧪 Database Testing
-
-After starting PostgreSQL, you can test CRUD operations:
-
-```sql
--- Insert a test document
-INSERT INTO documents (filename, content_type, file_size, status)
-VALUES ('test.md', 'text/markdown', 1024, 'PROCESSING');
-
--- Verify insertion
-SELECT * FROM documents;
-
--- Insert a chunk with test embedding
-INSERT INTO chunks (document_id, content, chunk_index, embedding)
-VALUES (
-    (SELECT id FROM documents LIMIT 1),
-    'This is a test chunk',
-    0,
-    '[0.1, 0.2, ...]'::vector  -- 768 dimensions required
-);
-
--- Test vector search (replace with real embedding)
-SELECT id, content, embedding <=> '[0.1, 0.2, ...]'::vector AS distance
-FROM chunks
-ORDER BY distance
-LIMIT 5;
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Container won't start
-
-```bash
-# Check logs for errors
-docker-compose logs postgres
-
-# Verify port 5432 is not already in use
-lsof -i :5432
-
-# Restart from scratch
-docker-compose down -v
-docker-compose up -d
-```
-
-### "relation does not exist" error
-
-The `init.sql` script runs only on first volume creation. If you modify the schema:
-
-```bash
-# Remove volume and recreate
-docker-compose down -v
-docker-compose up -d
-```
-
-### pgvector extension not available
-
-Verify you're using the correct Docker image:
-```bash
-docker-compose ps
-# Should show: pgvector/pgvector:pg15
-```
-
----
-
-## 📝 Implementation Status
-
-- [x] **Phase 1.1**: Docker and PostgreSQL Configuration ✅
-- [x] **Phase 1.2**: Maven and Dependencies Configuration ✅
-- [x] **Phase 1.3**: Application Configuration (application.yml) ✅
-- [x] **Phase 1.4**: Gemini API Setup ✅
-- [x] **Phase 2.1**: JPA Entities (Document, Chunk, Conversation, Message) ✅
-- [x] **Phase 2.2**: Custom Types (VectorAttributeConverter for pgvector) ✅
-- [x] **Phase 2.3**: Repositories (DocumentRepository, ChunkRepository, ConversationRepository, MessageRepository) ✅
-- [x] **Phase 3.1**: Document Parsers (Markdown, HTML, PDF) + Unit Tests ✅
-- [x] **Phase 3.2**: Gemini API Client (LLMService, EmbeddingService interfaces + Gemini implementation) ✅
-- [ ] **Phase 4**: Business Logic (In Progress)
-  - [x] **Phase 4.1**: ChunkingService (Semantic splitting with overlap) ✅
-  - [x] **Phase 4.2**: EmbeddingService (batch processing) ✅
-  - [x] **Phase 4.3**: DocumentService (upload + async processing) ✅
-  - [ ] Phase 4.4-4.5: VectorSearchService, RAGService
-- [ ] Phase 5: REST API
-- [ ] Phase 6: Advanced Configuration
-  - [x] **Phase 6.1**: Async Processing Configuration ✅
-- [ ] Phase 7: Testing
-- [ ] Phase 8: Deployment
-
----
-
-## 🤝 Contributing
-
-To contribute to the project, check the guidelines in [AGENTS.md](AGENTS.md).
-
-## 📄 License
-
-[Specify license]
-
----
-
-**Version**: 0.7.0 (Phase 4.1 completed - ChunkingService with semantic splitting)  
-**Last Updated**: December 2025
-
