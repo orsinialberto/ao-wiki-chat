@@ -195,6 +195,22 @@ wikichat interactive
 - **Chat**: `query`, `interactive`, `history`, `clear`
 - **System**: `health`, `config`
 
+### Checking the database schema
+
+```bash
+# Count total chunks
+docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT COUNT(*) FROM chunks;"
+
+# View all chunks with document info
+docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT c.id, c.chunk_index, LEFT(c.content, 50) as content_preview, d.filename, c.created_at FROM chunks c JOIN documents d ON c.document_id = d.id ORDER BY d.created_at DESC, c.chunk_index;"
+
+# Count chunks per document
+docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT d.filename, COUNT(c.id) as chunk_count FROM documents d LEFT JOIN chunks c ON d.id = c.document_id GROUP BY d.id, d.filename ORDER BY chunk_count DESC;"
+
+# Check if embeddings are present
+docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT COUNT(*) as total_chunks, COUNT(embedding) as chunks_with_embeddings, COUNT(*) - COUNT(embedding) as chunks_without_embeddings FROM chunks;"
+```
+
 ### Documentation
 
 For complete CLI documentation, see [CLI_README.md](ao-wiki-chat-cli/CLI_README.md).

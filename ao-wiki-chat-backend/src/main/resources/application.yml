@@ -64,7 +64,7 @@ rag:
     overlap: 50
   search:
     top-k: 5
-    similarity-threshold: 0.7
+    similarity-threshold: 0.5
   vector:
     dimension: 768
     distance-metric: cosine
