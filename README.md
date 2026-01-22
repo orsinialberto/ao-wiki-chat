@@ -220,6 +220,7 @@ For complete CLI documentation, see [CLI_README.md](ao-wiki-chat-cli/CLI_README.
 ## 📚 Documentation
 
 - [AGENTS.md](AGENTS.md) - Guidelines for developers and AI agents
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture and technical design
 - [CLI_README.md](ao-wiki-chat-cli/CLI_README.md) - CLI user guide and reference
 - [docs/CHUNKING_LOGIC.md](docs/CHUNKING_LOGIC.md) - Chunking algorithm explained
 
