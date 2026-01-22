@@ -44,14 +44,14 @@ gemini:
   api:
     key: ${GEMINI_API_KEY}
   chat:
-    model: gemini-2.0-flash-exp
+    model: gemini-2.5-flash-lite
     temperature: 0.7
-    max-tokens: 2048
+    max-tokens: 512
   embedding:
     model: text-embedding-004
     dimension: 768
   rate-limit:
-    requests-per-minute: 50
+    requests-per-minute: 10
     tokens-per-day: 2000000
 
 upload:
@@ -60,16 +60,16 @@ upload:
 
 rag:
   chunk:
-    size: 500
-    overlap: 50
+    size: 300
+    overlap: 30
   search:
-    top-k: 5
+    top-k: 3
     similarity-threshold: 0.5
   vector:
     dimension: 768
     distance-metric: cosine
   conversation:
-    max-history-messages: 10  # Maximum number of previous messages to include
+    max-history-messages: 5  # Maximum number of previous messages to include
     include-history: true     # Enable/disable conversation context (default: true)
 
 management:
