@@ -32,7 +32,7 @@ CREATE TABLE chunks (
     document_id UUID NOT NULL,
     content TEXT NOT NULL,
     chunk_index INTEGER NOT NULL,
-    embedding vector(768),  -- Gemini text-embedding-004 uses 768 dimensions
+    embedding vector(768),  -- Gemini gemini-embedding-001 uses 768 dimensions (via Matryoshka scaling)
     metadata JSONB,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     

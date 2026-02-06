@@ -85,7 +85,7 @@ class VectorAttributeConverterTest {
 
     @Test
     void convertToDatabaseColumnWhen768DimensionsReturnsCorrectString() {
-        // Given: Simulate Gemini text-embedding-004 dimensions
+        // Given: Simulate Gemini gemini-embedding-001 dimensions (768 via Matryoshka scaling)
         float[] embedding = new float[768];
         for (int i = 0; i < 768; i++) {
             embedding[i] = i * 0.1f;

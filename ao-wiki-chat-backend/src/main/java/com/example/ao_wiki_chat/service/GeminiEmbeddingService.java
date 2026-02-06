@@ -19,7 +19,7 @@ import dev.langchain4j.model.output.Response;
 
 /**
  * Gemini-specific implementation of EmbeddingService.
- * Uses LangChain4j's EmbeddingModel for Gemini text-embedding-004 integration.
+ * Uses LangChain4j's EmbeddingModel for Gemini gemini-embedding-001 integration.
  * Supports batch processing with configurable batch size to optimize API usage
  * and respect rate limits.
  */
@@ -164,7 +164,7 @@ public class GeminiEmbeddingService {
     /**
      * Returns the dimensionality of the embeddings produced by this service.
      *
-     * @return the embedding dimension (e.g., 768 for Gemini text-embedding-004)
+     * @return the embedding dimension (e.g., 768 for Gemini gemini-embedding-001)
      */
     public int getEmbeddingDimension() {
         return embeddingDimension;

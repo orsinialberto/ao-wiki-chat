@@ -48,7 +48,7 @@ gemini:
     temperature: 0.7
     max-tokens: 512
   embedding:
-    model: text-embedding-004
+    model: gemini-embedding-001
     dimension: 768
   rate-limit:
     requests-per-minute: 10

@@ -280,7 +280,7 @@ AI agents **MUST NOT**:
 - Always normalize embeddings before saving
 - pgvector queries must include similarity threshold (avoid irrelevant results)
 - Use `<=>` operator (cosine distance), not `<->` (L2 distance)
-- Embedding dimension: 768 for Gemini text-embedding-004
+- Embedding dimension: 768 for Gemini gemini-embedding-001 (via Matryoshka scaling)
 
 ### Document Processing
 - Validate content-type before parsing

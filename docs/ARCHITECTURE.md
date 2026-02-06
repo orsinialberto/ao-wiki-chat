@@ -237,7 +237,7 @@ The system follows a **layered architecture** pattern:
 - **LangChain4j 0.36.2**: Java framework for LLM applications
 - **Google Gemini API**: 
   - `gemini-2.5-flash-lite`: Chat model
-  - `text-embedding-004`: Embedding model (768 dimensions)
+  - `gemini-embedding-001`: Embedding model (768 dimensions via Matryoshka scaling)
 
 ### Document Processing
 
@@ -630,8 +630,8 @@ Generates embeddings using Gemini API.
 - Error handling and retries
 
 **Configuration:**
-- Model: `text-embedding-004`
-- Dimension: 768
+- Model: `gemini-embedding-001`
+- Dimension: 768 (via Matryoshka scaling)
 - Batch size: 100
 
 #### `GeminiLLMService`
@@ -673,8 +673,8 @@ Configures Gemini API clients.
 ### Google Gemini API
 
 #### Embedding API
-- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`
-- **Model**: `text-embedding-004`
+- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent`
+- **Model**: `gemini-embedding-001`
 - **Dimension**: 768
 - **Rate Limits**: 
   - 2M tokens/day (free tier)
@@ -745,7 +745,7 @@ gemini:
     temperature: 0.7
     max-tokens: 512
   embedding:
-    model: text-embedding-004
+    model: gemini-embedding-001
     dimension: 768
 ```
 

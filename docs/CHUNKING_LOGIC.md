@@ -305,7 +305,7 @@ rag:
 
 - **Token estimate**: ~4 caratteri/token → 500 char = ~125 token
 - **Context window**: chunk più piccoli per maggiore precisione nel retrieval
-- **Gemini embedding**: dimensione ottimale per granularità fine con text-embedding-004
+- **Gemini embedding**: dimensione ottimale per granularità fine con gemini-embedding-001
 - **Balanced approach**: 100-200 token permette retrieval accurato senza perdere contesto
 
 ### Perché 10% overlap?

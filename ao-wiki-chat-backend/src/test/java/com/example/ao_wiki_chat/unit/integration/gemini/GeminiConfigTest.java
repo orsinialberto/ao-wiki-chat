@@ -25,7 +25,8 @@ class GeminiConfigTest {
         ReflectionTestUtils.setField(geminiConfig, "chatModel", "gemini-2.0-flash-exp");
         ReflectionTestUtils.setField(geminiConfig, "temperature", 0.7);
         ReflectionTestUtils.setField(geminiConfig, "maxTokens", 2048);
-        ReflectionTestUtils.setField(geminiConfig, "embeddingModel", "text-embedding-004");
+        ReflectionTestUtils.setField(geminiConfig, "embeddingModel", "gemini-embedding-001");
+        ReflectionTestUtils.setField(geminiConfig, "embeddingDimension", 768);
     }
     
     @Test

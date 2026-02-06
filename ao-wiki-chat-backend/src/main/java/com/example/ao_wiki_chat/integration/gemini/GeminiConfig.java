@@ -38,6 +38,9 @@ public class GeminiConfig {
     @Value("${gemini.embedding.model}")
     private String embeddingModel;
     
+    @Value("${gemini.embedding.dimension}")
+    private int embeddingDimension;
+    
     /**
      * Creates a ChatLanguageModel bean for Gemini chat completions.
      * This bean is used by LLMService implementations to generate text responses.
@@ -62,16 +65,19 @@ public class GeminiConfig {
     /**
      * Creates an EmbeddingModel bean for Gemini text embeddings.
      * This bean is used by EmbeddingService implementations to generate vector embeddings.
+     * Uses outputDimensionality to request 768-dim vectors via Matryoshka scaling.
      *
      * @return configured GoogleAiEmbeddingModel instance
      */
     @Bean("geminiEmbeddingModel")
     public EmbeddingModel geminiEmbeddingModel() {
-        log.info("Initializing Gemini Embedding Model: {}", embeddingModel);
+        log.info("Initializing Gemini Embedding Model: {} with dimension: {}",
+                embeddingModel, embeddingDimension);
         
         return GoogleAiEmbeddingModel.builder()
                 .apiKey(apiKey)
                 .modelName(embeddingModel)
+                .outputDimensionality(embeddingDimension)
                 .timeout(Duration.ofSeconds(30))
                 .logRequestsAndResponses(false)
                 .build();

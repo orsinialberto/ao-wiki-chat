@@ -100,7 +100,7 @@ class ChunkEmbeddingIntegrationTest {
     @Test
     @Transactional
     void saveChunkWithEmbeddingWhenValidDataPersistsCorrectly() {
-        // Given: Create a chunk with embedding (768 dimensions like Gemini text-embedding-004)
+        // Given: Create a chunk with embedding (768 dimensions like Gemini gemini-embedding-001)
         float[] embedding = new float[768];
         for (int i = 0; i < 768; i++) {
             embedding[i] = (float) (Math.random() * 2 - 1); // Random values between -1 and 1
