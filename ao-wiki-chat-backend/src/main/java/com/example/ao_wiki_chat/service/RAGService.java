@@ -180,6 +180,10 @@ public class RAGService {
             Consumer<Message> onComplete,
             Consumer<Throwable> onError
     ) {
+        if (onChunk == null || onComplete == null || onError == null) {
+            throw new IllegalArgumentException("Callback parameters (onChunk, onComplete, onError) must not be null");
+        }
+
         try {
             Conversation conversation = conversationRepository.findById(conversationId)
                     .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
@@ -239,8 +243,15 @@ public class RAGService {
                 return;
             }
 
+            String generatedContent = fullContent.toString();
+            if (generatedContent.isBlank()) {
+                log.warn("LLM produced empty response for conversation {}", conversationId);
+                generatedContent = "I'm sorry, I wasn't able to generate a response. Please try again.";
+                onChunk.accept(generatedContent);
+            }
+
             List<SourceReference> sources = buildSourceReferences(relevantChunks);
-            Message assistantMsg = saveAssistantMessage(conversation, fullContent.toString(), sources);
+            Message assistantMsg = saveAssistantMessage(conversation, generatedContent, sources);
             onComplete.accept(assistantMsg);
 
         } catch (InterruptedException e) {
