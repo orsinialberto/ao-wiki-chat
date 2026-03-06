@@ -9,9 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 
 /**
  * Configuration class for Google Gemini API integration.
@@ -63,6 +65,27 @@ public class GeminiConfig {
     }
     
     /**
+     * Creates a StreamingChatLanguageModel bean for Gemini streaming chat completions.
+     * Used by the ao-chat compatibility layer to stream responses via SSE.
+     *
+     * @return configured GoogleAiGeminiStreamingChatModel instance
+     */
+    @Bean("geminiStreamingChatModel")
+    public StreamingChatLanguageModel geminiStreamingChatModel() {
+        log.info("Initializing Gemini Streaming Chat Model: {} with temperature: {}, max tokens: {}",
+                chatModel, temperature, maxTokens);
+
+        return GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(chatModel)
+                .temperature(temperature)
+                .maxOutputTokens(maxTokens)
+                .timeout(Duration.ofSeconds(120))
+                .logRequestsAndResponses(false)
+                .build();
+    }
+
+    /**
      * Creates an EmbeddingModel bean for Gemini text embeddings.
      * This bean is used by EmbeddingService implementations to generate vector embeddings.
      * Uses outputDimensionality to request 768-dim vectors via Matryoshka scaling.
@@ -79,6 +102,7 @@ public class GeminiConfig {
                 .modelName(embeddingModel)
                 .outputDimensionality(embeddingDimension)
                 .timeout(Duration.ofSeconds(30))
+                .maxRetries(1)
                 .logRequestsAndResponses(false)
                 .build();
     }

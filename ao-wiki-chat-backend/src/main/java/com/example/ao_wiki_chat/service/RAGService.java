@@ -4,9 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +26,13 @@ import com.example.ao_wiki_chat.model.entity.Message;
 import com.example.ao_wiki_chat.model.enums.MessageRole;
 import com.example.ao_wiki_chat.repository.ConversationRepository;
 import com.example.ao_wiki_chat.repository.MessageRepository;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 
 /**
  * RAG (Retrieval-Augmented Generation) orchestrator service.
@@ -41,26 +53,17 @@ public class RAGService {
     private final GeminiEmbeddingService embeddingService;
     private final VectorSearchService vectorSearchService;
     private final LLMService llmService;
+    private final StreamingChatLanguageModel streamingChatModel;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final int maxHistoryMessages;
     private final boolean includeHistory;
     
-    /**
-     * Constructs a RAGService with required dependencies.
-     *
-     * @param embeddingService service for generating query embeddings
-     * @param vectorSearchService service for finding similar chunks
-     * @param llmService service for generating LLM responses
-     * @param conversationRepository repository for conversation operations
-     * @param messageRepository repository for message operations
-     * @param maxHistoryMessages maximum number of previous messages to include in prompt
-     * @param includeHistory whether to include conversation history in prompt
-     */
     public RAGService(
             GeminiEmbeddingService embeddingService,
             VectorSearchService vectorSearchService,
             LLMService llmService,
+            @Qualifier("geminiStreamingChatModel") StreamingChatLanguageModel streamingChatModel,
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
             @Value("${rag.conversation.max-history-messages:10}") int maxHistoryMessages,
@@ -69,6 +72,7 @@ public class RAGService {
         this.embeddingService = embeddingService;
         this.vectorSearchService = vectorSearchService;
         this.llmService = llmService;
+        this.streamingChatModel = streamingChatModel;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.maxHistoryMessages = maxHistoryMessages;
@@ -158,12 +162,107 @@ public class RAGService {
     }
     
     /**
-     * Retrieves previous messages from the conversation, ordered chronologically.
-     * Returns an empty list if no previous messages exist (first query of the session).
+     * Executes the RAG pipeline with streaming LLM output.
+     * Steps 1-4 (embedding, search, context, prompt) run synchronously.
+     * Step 5 (LLM generation) streams tokens via the onChunk callback.
      *
-     * @param conversationId the conversation UUID
-     * @return list of previous messages, ordered by creation time (oldest first)
+     * @param conversationId UUID of the conversation
+     * @param query the user's question
+     * @param onChunk called for each token produced by the LLM
+     * @param onComplete called with the saved assistant Message when streaming finishes
+     * @param onError called if any step fails
      */
+    @Transactional
+    public void processQueryStreaming(
+            UUID conversationId,
+            String query,
+            Consumer<String> onChunk,
+            Consumer<Message> onComplete,
+            Consumer<Throwable> onError
+    ) {
+        try {
+            Conversation conversation = conversationRepository.findById(conversationId)
+                    .orElseThrow(() -> new IllegalArgumentException("Conversation not found: " + conversationId));
+
+            List<Message> previousMessages = retrievePreviousMessages(conversationId);
+
+            float[] queryEmbedding = embeddingService.generateEmbedding(query);
+            List<Chunk> relevantChunks = vectorSearchService.findSimilarChunks(queryEmbedding);
+
+            log.info("Found {} relevant chunks for streaming query", relevantChunks.size());
+
+            if (relevantChunks.isEmpty()) {
+                String noContextAnswer = "I couldn't find any relevant information in the documents to answer your question.";
+                onChunk.accept(noContextAnswer);
+                Message assistantMsg = saveAssistantMessage(conversation, noContextAnswer, List.of());
+                onComplete.accept(assistantMsg);
+                return;
+            }
+
+            String context = buildContext(relevantChunks);
+            String prompt = buildPrompt(context, query, previousMessages);
+            log.debug("Prompt for streaming, length: {} characters", prompt.length());
+
+            StringBuilder fullContent = new StringBuilder();
+            CountDownLatch latch = new CountDownLatch(1);
+            AtomicReference<Throwable> streamError = new AtomicReference<>();
+
+            List<ChatMessage> messages = List.of(UserMessage.from(prompt));
+
+            streamingChatModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
+                @Override
+                public void onNext(String token) {
+                    fullContent.append(token);
+                    onChunk.accept(token);
+                }
+
+                @Override
+                public void onComplete(Response<AiMessage> response) {
+                    latch.countDown();
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    streamError.set(error);
+                    latch.countDown();
+                }
+            });
+
+            boolean finished = latch.await(120, TimeUnit.SECONDS);
+            if (!finished) {
+                onError.accept(new RuntimeException("LLM streaming timed out after 120 seconds"));
+                return;
+            }
+
+            if (streamError.get() != null) {
+                onError.accept(streamError.get());
+                return;
+            }
+
+            List<SourceReference> sources = buildSourceReferences(relevantChunks);
+            Message assistantMsg = saveAssistantMessage(conversation, fullContent.toString(), sources);
+            onComplete.accept(assistantMsg);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            onError.accept(e);
+        } catch (Exception e) {
+            log.error("Error in streaming RAG query: {}", e.getMessage(), e);
+            onError.accept(e);
+        }
+    }
+
+    private Message saveAssistantMessage(Conversation conversation, String content, List<SourceReference> sources) {
+        String sourcesJson = serializeSources(sources);
+        Message assistantMessage = Message.builder()
+                .conversation(conversation)
+                .role(MessageRole.ASSISTANT)
+                .content(content)
+                .sources(sourcesJson)
+                .build();
+        return messageRepository.save(assistantMessage);
+    }
+
     private List<Message> retrievePreviousMessages(UUID conversationId) {
         List<Message> messages = messageRepository.findByConversation_IdOrderByCreatedAtAsc(conversationId);
         log.debug("Retrieved {} previous messages for conversation {}", messages.size(), conversationId);

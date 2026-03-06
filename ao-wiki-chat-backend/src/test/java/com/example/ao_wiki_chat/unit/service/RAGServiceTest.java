@@ -4,6 +4,7 @@ import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
 import com.example.ao_wiki_chat.service.LLMService;
 import com.example.ao_wiki_chat.service.RAGService;
 import com.example.ao_wiki_chat.service.VectorSearchService;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -57,6 +58,9 @@ class RAGServiceTest {
     
     @Mock
     private LLMService llmService;
+
+    @Mock
+    private StreamingChatLanguageModel streamingChatModel;
     
     @Mock
     private ConversationRepository conversationRepository;
@@ -82,6 +86,7 @@ class RAGServiceTest {
             embeddingService,
             vectorSearchService,
             llmService,
+            streamingChatModel,
             conversationRepository,
             messageRepository,
             10, // maxHistoryMessages
@@ -868,6 +873,7 @@ class RAGServiceTest {
             embeddingService,
             vectorSearchService,
             llmService,
+            streamingChatModel,
             conversationRepository,
             messageRepository,
             10, // maxHistoryMessages

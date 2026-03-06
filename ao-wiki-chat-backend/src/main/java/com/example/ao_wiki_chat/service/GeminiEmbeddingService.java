@@ -2,6 +2,8 @@ package com.example.ao_wiki_chat.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -21,30 +23,51 @@ import dev.langchain4j.model.output.Response;
  * Gemini-specific implementation of EmbeddingService.
  * Uses LangChain4j's EmbeddingModel for Gemini gemini-embedding-001 integration.
  * Supports batch processing with configurable batch size to optimize API usage
- * and respect rate limits.
+ * and respect rate limits. Includes retry with exponential backoff for 429 errors.
  */
 @Service
 public class GeminiEmbeddingService {
     
     private static final Logger log = LoggerFactory.getLogger(GeminiEmbeddingService.class);
-    private static final int MAX_BATCH_SIZE = 100;
+    private static final long MAX_RETRY_DELAY_MS = 90_000L;
+    private static final Pattern RETRY_DELAY_PATTERN = Pattern.compile(
+            "Please retry in ([\\d.]+)s"
+    );
     
     private final EmbeddingModel embeddingModel;
     private final int embeddingDimension;
+    private final int batchSize;
+    private final long batchDelayMs;
+    private final int maxRetries;
+    private final long retryBaseDelayMs;
     
     /**
-     * Constructs a GeminiEmbeddingService with the specified embedding model and dimension.
+     * Constructs a GeminiEmbeddingService with rate-limiting and retry configuration.
      *
-     * @param embeddingModel the configured Gemini embedding model bean
+     * @param embeddingModel    the configured Gemini embedding model bean
      * @param embeddingDimension the dimensionality of the embeddings (default: 768)
+     * @param batchSize         number of texts per API call (default: 25)
+     * @param batchDelayMs      milliseconds to wait between batch calls (default: 15000)
+     * @param maxRetries        max retry attempts per batch on transient errors (default: 5)
+     * @param retryBaseDelayMs  base delay for exponential backoff in ms (default: 10000)
      */
     public GeminiEmbeddingService(
             @Qualifier("geminiEmbeddingModel") EmbeddingModel embeddingModel,
-            @Value("${gemini.embedding.dimension:768}") int embeddingDimension
+            @Value("${gemini.embedding.dimension:768}") int embeddingDimension,
+            @Value("${gemini.embedding.batch-size:25}") int batchSize,
+            @Value("${gemini.embedding.batch-delay-ms:15000}") long batchDelayMs,
+            @Value("${gemini.embedding.max-retries:5}") int maxRetries,
+            @Value("${gemini.embedding.retry-base-delay-ms:10000}") long retryBaseDelayMs
     ) {
         this.embeddingModel = embeddingModel;
         this.embeddingDimension = embeddingDimension;
-        log.info("GeminiEmbeddingService initialized with dimension: {}", embeddingDimension);
+        this.batchSize = batchSize;
+        this.batchDelayMs = batchDelayMs;
+        this.maxRetries = maxRetries;
+        this.retryBaseDelayMs = retryBaseDelayMs;
+        log.info("GeminiEmbeddingService initialized - dimension: {}, batchSize: {}, "
+                + "batchDelayMs: {}, maxRetries: {}, retryBaseDelayMs: {}",
+                embeddingDimension, batchSize, batchDelayMs, maxRetries, retryBaseDelayMs);
     }
     
     /**
@@ -92,7 +115,8 @@ public class GeminiEmbeddingService {
     
     /**
      * Generates vector embeddings for multiple texts in batch.
-     * Batch processing is more efficient for large collections.
+     * Applies inter-batch rate limiting and retry with exponential backoff
+     * to handle API quota limits (free tier: 100 requests/minute).
      *
      * @param texts the list of texts to embed
      * @return list of embeddings (same order as input)
@@ -104,31 +128,37 @@ public class GeminiEmbeddingService {
             return List.of();
         }
         
-        // Validate all texts are non-empty
         for (int i = 0; i < texts.size(); i++) {
             if (texts.get(i) == null || texts.get(i).trim().isEmpty()) {
                 throw new EmbeddingException("Text at index " + i + " is null or empty");
             }
         }
         
-        log.info("Generating embeddings for {} texts", texts.size());
+        int totalBatches = (int) Math.ceil((double) texts.size() / batchSize);
+        log.info("Generating embeddings for {} texts in {} batches (batch size: {})",
+                texts.size(), totalBatches, batchSize);
         
         try {
             List<float[]> allEmbeddings = new ArrayList<>();
             
-            // Process in batches to respect API limits
-            for (int i = 0; i < texts.size(); i += MAX_BATCH_SIZE) {
-                int endIndex = Math.min(i + MAX_BATCH_SIZE, texts.size());
+            for (int i = 0; i < texts.size(); i += batchSize) {
+                int endIndex = Math.min(i + batchSize, texts.size());
+                int currentBatch = (i / batchSize) + 1;
                 List<String> batch = texts.subList(i, endIndex);
                 
-                log.debug("Processing batch {}-{} of {}", i + 1, endIndex, texts.size());
+                if (i > 0 && batchDelayMs > 0) {
+                    log.debug("Rate limit delay: waiting {}ms before batch {}/{}",
+                            batchDelayMs, currentBatch, totalBatches);
+                    sleep(batchDelayMs);
+                }
                 
                 List<TextSegment> segments = batch.stream()
                         .map(TextSegment::from)
                         .collect(Collectors.toList());
                 
                 long startTime = System.currentTimeMillis();
-                Response<List<Embedding>> response = embeddingModel.embedAll(segments);
+                Response<List<Embedding>> response = embedBatchWithRetry(
+                        segments, i, endIndex);
                 long duration = System.currentTimeMillis() - startTime;
                 
                 if (response.content() == null || response.content().isEmpty()) {
@@ -141,7 +171,8 @@ public class GeminiEmbeddingService {
                 
                 allEmbeddings.addAll(batchEmbeddings);
                 
-                log.debug("Batch processed in {}ms, {} embeddings generated", duration, batchEmbeddings.size());
+                log.debug("Batch {}/{} processed in {}ms ({} embeddings)",
+                        currentBatch, totalBatches, duration, batchEmbeddings.size());
             }
             
             if (allEmbeddings.size() != texts.size()) {
@@ -158,6 +189,93 @@ public class GeminiEmbeddingService {
         } catch (Exception e) {
             log.error("Failed to generate batch embeddings from Gemini: {}", e.getMessage(), e);
             throw new EmbeddingException("Failed to generate batch embeddings: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Calls embedAll with retry and exponential backoff.
+     * On 429 (rate limit) errors, parses the suggested retry delay from the response
+     * when available; otherwise falls back to exponential backoff.
+     */
+    private Response<List<Embedding>> embedBatchWithRetry(
+            List<TextSegment> segments, int batchStart, int batchEnd) {
+        
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return embeddingModel.embedAll(segments);
+            } catch (Exception e) {
+                if (attempt >= maxRetries) {
+                    log.error("Batch {}-{} failed after {} attempts: {}",
+                            batchStart + 1, batchEnd, maxRetries, e.getMessage());
+                    throw e;
+                }
+                
+                long delay = calculateRetryDelay(e, attempt);
+                log.warn("Batch {}-{} failed (attempt {}/{}), retrying in {}ms: {}",
+                        batchStart + 1, batchEnd, attempt, maxRetries, delay,
+                        summarizeError(e));
+                
+                sleep(delay);
+            }
+        }
+    }
+    
+    /**
+     * Determines retry delay: uses the server-suggested delay from 429 responses
+     * when parseable, otherwise applies exponential backoff (base * 2^(attempt-1)).
+     */
+    long calculateRetryDelay(Exception e, int attempt) {
+        long parsedDelay = parseRetryDelayFromError(e);
+        if (parsedDelay > 0) {
+            return Math.min(parsedDelay, MAX_RETRY_DELAY_MS);
+        }
+        long delay = retryBaseDelayMs * (1L << (attempt - 1));
+        return Math.min(delay, MAX_RETRY_DELAY_MS);
+    }
+    
+    /**
+     * Attempts to extract the retry delay from Google API 429 error messages.
+     * Looks for the pattern "Please retry in Xs" in the exception message.
+     *
+     * @return parsed delay in milliseconds with 1s buffer, or -1 if not parseable
+     */
+    long parseRetryDelayFromError(Exception e) {
+        String message = e.getMessage();
+        if (message == null) {
+            return -1;
+        }
+        
+        Matcher matcher = RETRY_DELAY_PATTERN.matcher(message);
+        if (matcher.find()) {
+            try {
+                double seconds = Double.parseDouble(matcher.group(1));
+                return (long) (seconds * 1000) + 1000;
+            } catch (NumberFormatException nfe) {
+                log.debug("Could not parse retry delay number: {}", matcher.group(1));
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Extracts a short error summary for log messages (first line only).
+     */
+    private String summarizeError(Exception e) {
+        String msg = e.getMessage();
+        if (msg == null) return "unknown error";
+        int newline = msg.indexOf('\n');
+        return newline > 0 ? msg.substring(0, newline) : msg;
+    }
+    
+    /**
+     * Sleeps for the specified duration. Package-private for test overriding.
+     */
+    void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new EmbeddingException("Embedding processing interrupted during rate limit delay", e);
         }
     }
     

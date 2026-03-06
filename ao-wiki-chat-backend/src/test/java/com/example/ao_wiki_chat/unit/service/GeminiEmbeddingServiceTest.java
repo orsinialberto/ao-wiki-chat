@@ -1,8 +1,10 @@
 package com.example.ao_wiki_chat.unit.service;
 
 import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.Mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,11 +46,17 @@ class GeminiEmbeddingServiceTest {
     private GeminiEmbeddingService geminiEmbeddingService;
     
     private static final int EMBEDDING_DIMENSION = 768;
+    private static final int BATCH_SIZE = 25;
+    private static final long NO_BATCH_DELAY = 0;
+    private static final int MAX_RETRIES = 3;
+    private static final long FAST_RETRY_DELAY_MS = 1;
     private static final float[] TEST_VECTOR = createTestVector(EMBEDDING_DIMENSION);
     
     @BeforeEach
     void setUp() {
-        geminiEmbeddingService = new GeminiEmbeddingService(embeddingModel, EMBEDDING_DIMENSION);
+        geminiEmbeddingService = new GeminiEmbeddingService(
+                embeddingModel, EMBEDDING_DIMENSION,
+                BATCH_SIZE, NO_BATCH_DELAY, MAX_RETRIES, FAST_RETRY_DELAY_MS);
     }
     
     @Test
@@ -255,12 +264,133 @@ class GeminiEmbeddingServiceTest {
         assertThat(healthy).isFalse();
     }
     
+    // ============================================
+    // Retry with exponential backoff tests
+    // ============================================
+    
+    @Test
+    void generateEmbeddingsRetriesOnTransientErrorAndSucceeds() {
+        // Given: first call fails with 429, second succeeds
+        List<String> texts = Arrays.asList("Text 1", "Text 2");
+        Embedding emb1 = createMockEmbedding(TEST_VECTOR);
+        Embedding emb2 = createMockEmbedding(TEST_VECTOR);
+        
+        when(embeddingModel.embedAll(anyList()))
+                .thenThrow(new RuntimeException("HTTP error (429): rate limited"))
+                .thenReturn(embeddingListResponse);
+        when(embeddingListResponse.content()).thenReturn(Arrays.asList(emb1, emb2));
+        
+        // When
+        List<float[]> results = geminiEmbeddingService.generateEmbeddings(texts);
+        
+        // Then
+        assertThat(results).hasSize(2);
+        verify(embeddingModel, times(2)).embedAll(anyList());
+    }
+    
+    @Test
+    void generateEmbeddingsThrowsAfterMaxRetries() {
+        // Given: all attempts fail
+        List<String> texts = Arrays.asList("Text 1");
+        
+        when(embeddingModel.embedAll(anyList()))
+                .thenThrow(new RuntimeException("HTTP error (429): rate limited"));
+        
+        // When / Then
+        assertThatThrownBy(() -> geminiEmbeddingService.generateEmbeddings(texts))
+                .isInstanceOf(EmbeddingException.class);
+        verify(embeddingModel, times(MAX_RETRIES)).embedAll(anyList());
+    }
+    
+    @Test
+    void generateEmbeddingsRecoversAfterMultipleFailures() {
+        // Given: fails twice, succeeds on third attempt
+        List<String> texts = Arrays.asList("Text 1");
+        Embedding emb1 = createMockEmbedding(TEST_VECTOR);
+        
+        when(embeddingModel.embedAll(anyList()))
+                .thenThrow(new RuntimeException("HTTP error (429): Please retry in 0.001s."))
+                .thenThrow(new RuntimeException("HTTP error (429): Please retry in 0.001s."))
+                .thenReturn(embeddingListResponse);
+        when(embeddingListResponse.content()).thenReturn(List.of(emb1));
+        
+        // When
+        List<float[]> results = geminiEmbeddingService.generateEmbeddings(texts);
+        
+        // Then
+        assertThat(results).hasSize(1);
+        verify(embeddingModel, times(3)).embedAll(anyList());
+    }
+    
+    // ============================================
+    // Multi-batch processing tests
+    // ============================================
+    
+    @Test
+    void generateEmbeddingsSplitsIntoMultipleBatches() {
+        // Given: 30 texts with batch size 25 → 2 batches
+        int textCount = 30;
+        List<String> texts = new ArrayList<>();
+        IntStream.range(0, textCount).forEach(i -> texts.add("Text " + i));
+        
+        List<Embedding> batch1Embeddings = new ArrayList<>();
+        IntStream.range(0, BATCH_SIZE).forEach(i -> batch1Embeddings.add(createMockEmbedding(TEST_VECTOR)));
+        
+        List<Embedding> batch2Embeddings = new ArrayList<>();
+        IntStream.range(0, textCount - BATCH_SIZE).forEach(i -> batch2Embeddings.add(createMockEmbedding(TEST_VECTOR)));
+        
+        Response<List<Embedding>> response1 = createMockListResponse(batch1Embeddings);
+        Response<List<Embedding>> response2 = createMockListResponse(batch2Embeddings);
+        
+        when(embeddingModel.embedAll(anyList()))
+                .thenReturn(response1)
+                .thenReturn(response2);
+        
+        // When
+        List<float[]> results = geminiEmbeddingService.generateEmbeddings(texts);
+        
+        // Then
+        assertThat(results).hasSize(textCount);
+        verify(embeddingModel, times(2)).embedAll(anyList());
+    }
+    
+    @Test
+    void generateEmbeddingsRetriesFailedBatchInMultiBatchScenario() {
+        // Given: 30 texts, first batch OK, second batch fails then recovers
+        int textCount = 30;
+        List<String> texts = new ArrayList<>();
+        IntStream.range(0, textCount).forEach(i -> texts.add("Text " + i));
+        
+        List<Embedding> batch1Embeddings = new ArrayList<>();
+        IntStream.range(0, BATCH_SIZE).forEach(i -> batch1Embeddings.add(createMockEmbedding(TEST_VECTOR)));
+        
+        List<Embedding> batch2Embeddings = new ArrayList<>();
+        IntStream.range(0, textCount - BATCH_SIZE).forEach(i -> batch2Embeddings.add(createMockEmbedding(TEST_VECTOR)));
+        
+        Response<List<Embedding>> response1 = createMockListResponse(batch1Embeddings);
+        Response<List<Embedding>> response2 = createMockListResponse(batch2Embeddings);
+        
+        when(embeddingModel.embedAll(anyList()))
+                .thenReturn(response1)
+                .thenThrow(new RuntimeException("HTTP error (429): rate limited"))
+                .thenReturn(response2);
+        
+        // When
+        List<float[]> results = geminiEmbeddingService.generateEmbeddings(texts);
+        
+        // Then
+        assertThat(results).hasSize(textCount);
+        verify(embeddingModel, times(3)).embedAll(anyList());
+    }
+    
+    // ============================================
     // Helper methods
+    // ============================================
     
     private static float[] createTestVector(int dimension) {
         float[] vector = new float[dimension];
         for (int i = 0; i < dimension; i++) {
-            vector[i] = (float) (Math.random() * 2 - 1); // Random values between -1 and 1
+            vector[i] = (float) (Math.random() * 2 - 1);
         }
         return vector;
     }
@@ -269,6 +399,13 @@ class GeminiEmbeddingServiceTest {
         Embedding mockEmbedding = org.mockito.Mockito.mock(Embedding.class);
         when(mockEmbedding.vector()).thenReturn(vector);
         return mockEmbedding;
+    }
+    
+    @SuppressWarnings("unchecked")
+    private Response<List<Embedding>> createMockListResponse(List<Embedding> embeddings) {
+        Response<List<Embedding>> response = org.mockito.Mockito.mock(Response.class);
+        when(response.content()).thenReturn(embeddings);
+        return response;
     }
 }
 

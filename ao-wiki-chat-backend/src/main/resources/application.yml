@@ -50,6 +50,10 @@ gemini:
   embedding:
     model: gemini-embedding-001
     dimension: 768
+    batch-size: 25
+    batch-delay-ms: 15000
+    max-retries: 5
+    retry-base-delay-ms: 10000
   rate-limit:
     requests-per-minute: 10
     tokens-per-day: 2000000

@@ -69,50 +69,6 @@ docker-compose down -v
 
 ---
 
-## 📊 Database Structure
-
-The `wikichat` database contains 4 main tables:
-
-### `documents`
-Stores documents uploaded by users.
-- `id` (UUID): Primary key
-- `filename`: Original file name
-- `content_type`: MIME type (text/markdown, text/html, application/pdf)
-- `file_size`: Size in bytes
-- `status`: Processing status (PROCESSING, COMPLETED, FAILED)
-- `metadata` (JSONB): Additional metadata
-- `created_at`, `updated_at`: Timestamps
-
-### `chunks`
-Text fragments extracted from documents with vector embeddings.
-- `id` (UUID): Primary key
-- `document_id` (UUID): Foreign key → documents
-- `content`: Fragment text (~500 tokens)
-- `chunk_index`: Position in original document
-- `embedding` (vector[768]): Gemini vector embedding
-- `metadata` (JSONB): Additional metadata
-- **HNSW index** for fast vector search (cosine distance)
-
-### `conversations`
-User chat sessions.
-- `id` (UUID): Primary key
-- `session_id`: Unique session identifier
-- `title`: Conversation title
-- `metadata` (JSONB): Additional metadata
-- `created_at`, `updated_at`: Timestamps
-
-### `messages`
-Messages within conversations.
-- `id` (UUID): Primary key
-- `conversation_id` (UUID): Foreign key → conversations
-- `role`: USER or ASSISTANT
-- `content`: Message text
-- `sources` (JSONB): References to source chunks
-- `metadata` (JSONB): Additional metadata
-- `created_at`: Timestamp
-
----
-
 ## 🔧 Configuration
 
 ### Database Credentials (Development)

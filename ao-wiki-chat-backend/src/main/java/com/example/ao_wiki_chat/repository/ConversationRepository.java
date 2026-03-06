@@ -2,7 +2,11 @@ package com.example.ao_wiki_chat.repository;
 
 import com.example.ao_wiki_chat.model.entity.Conversation;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,5 +51,16 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
      * @return list of all conversations, most recently updated first
      */
     List<Conversation> findAllByOrderByUpdatedAtDesc();
+
+    /**
+     * Update the title of a conversation by its ID.
+     *
+     * @param id the conversation UUID
+     * @param title the new title
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE Conversation c SET c.title = :title WHERE c.id = :id")
+    void updateTitle(@Param("id") UUID id, @Param("title") String title);
 }
 
