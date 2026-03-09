@@ -1,6 +1,6 @@
 package com.example.ao_wiki_chat.unit.service;
 
-import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
+import com.example.ao_wiki_chat.service.EmbeddingService;
 import com.example.ao_wiki_chat.service.LLMService;
 import com.example.ao_wiki_chat.service.RAGService;
 import com.example.ao_wiki_chat.service.VectorSearchService;
@@ -51,7 +51,7 @@ import com.example.ao_wiki_chat.repository.MessageRepository;
 class RAGServiceTest {
     
     @Mock
-    private GeminiEmbeddingService embeddingService;
+    private EmbeddingService embeddingService;
     
     @Mock
     private VectorSearchService vectorSearchService;

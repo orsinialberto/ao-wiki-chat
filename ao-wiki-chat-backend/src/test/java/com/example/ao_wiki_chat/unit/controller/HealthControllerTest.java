@@ -4,7 +4,7 @@ import com.example.ao_wiki_chat.controller.HealthController;
 import com.example.ao_wiki_chat.model.dto.DatabaseHealthResponse;
 import com.example.ao_wiki_chat.model.dto.GeminiHealthResponse;
 import com.example.ao_wiki_chat.model.dto.HealthResponse;
-import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
+import com.example.ao_wiki_chat.service.EmbeddingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class HealthControllerTest {
     private DataSource dataSource;
 
     @Mock
-    private GeminiEmbeddingService geminiEmbeddingService;
+    private EmbeddingService geminiEmbeddingService;
 
     @Mock
     private Connection connection;

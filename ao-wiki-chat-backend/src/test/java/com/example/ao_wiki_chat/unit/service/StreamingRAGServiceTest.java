@@ -8,7 +8,7 @@ import com.example.ao_wiki_chat.model.enums.DocumentStatus;
 import com.example.ao_wiki_chat.model.enums.MessageRole;
 import com.example.ao_wiki_chat.repository.ConversationRepository;
 import com.example.ao_wiki_chat.repository.MessageRepository;
-import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
+import com.example.ao_wiki_chat.service.EmbeddingService;
 import com.example.ao_wiki_chat.service.LLMService;
 import com.example.ao_wiki_chat.service.RAGService;
 import com.example.ao_wiki_chat.service.VectorSearchService;
@@ -48,7 +48,7 @@ class StreamingRAGServiceTest {
     private static final UUID CONVERSATION_ID = UUID.randomUUID();
 
     @Mock
-    private GeminiEmbeddingService embeddingService;
+    private EmbeddingService embeddingService;
 
     @Mock
     private VectorSearchService vectorSearchService;

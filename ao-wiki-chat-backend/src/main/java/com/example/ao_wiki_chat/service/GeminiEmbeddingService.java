@@ -26,7 +26,7 @@ import dev.langchain4j.model.output.Response;
  * and respect rate limits. Includes retry with exponential backoff for 429 errors.
  */
 @Service
-public class GeminiEmbeddingService {
+public class GeminiEmbeddingService implements EmbeddingService {
     
     private static final Logger log = LoggerFactory.getLogger(GeminiEmbeddingService.class);
     private static final long MAX_RETRY_DELAY_MS = 90_000L;
@@ -77,6 +77,7 @@ public class GeminiEmbeddingService {
      * @return the embedding as a float array
      * @throws com.example.ao_wiki_chat.exception.EmbeddingException if embedding generation fails
      */
+    @Override
     public float[] generateEmbedding(String text) {
         if (text == null || text.trim().isEmpty()) {
             throw new EmbeddingException("Text cannot be null or empty");
@@ -122,6 +123,7 @@ public class GeminiEmbeddingService {
      * @return list of embeddings (same order as input)
      * @throws com.example.ao_wiki_chat.exception.EmbeddingException if embedding generation fails
      */
+    @Override
     public List<float[]> generateEmbeddings(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
             log.debug("Empty text list provided, returning empty result");
@@ -284,6 +286,7 @@ public class GeminiEmbeddingService {
      *
      * @return the embedding dimension (e.g., 768 for Gemini gemini-embedding-001)
      */
+    @Override
     public int getEmbeddingDimension() {
         return embeddingDimension;
     }
@@ -293,6 +296,7 @@ public class GeminiEmbeddingService {
      *
      * @return true if the service is healthy, false otherwise
      */
+    @Override
     public boolean isHealthy() {
         try {
             log.debug("Performing health check on Gemini embedding model");

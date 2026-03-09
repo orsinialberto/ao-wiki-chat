@@ -43,7 +43,7 @@ public class DocumentService {
     private final ChunkRepository chunkRepository;
     private final ParserFactory parserFactory;
     private final ChunkingService chunkingService;
-    private final GeminiEmbeddingService embeddingService;
+    private final EmbeddingService embeddingService;
     private final List<String> allowedContentTypes;
     private final long maxFileSizeBytes;
     private final Path storageDirectory;
@@ -53,7 +53,7 @@ public class DocumentService {
             ChunkRepository chunkRepository,
             ParserFactory parserFactory,
             ChunkingService chunkingService,
-            GeminiEmbeddingService embeddingService,
+            EmbeddingService embeddingService,
             @Value("${upload.allowed-types}") String allowedTypes,
             @Value("${spring.servlet.multipart.max-file-size:52428800}") String maxFileSize,
             @Value("${upload.storage-directory:./uploads}") String storageDir

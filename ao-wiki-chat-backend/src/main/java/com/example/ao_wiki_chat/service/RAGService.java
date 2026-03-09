@@ -50,7 +50,7 @@ public class RAGService {
     
     private static final Logger log = LoggerFactory.getLogger(RAGService.class);
     
-    private final GeminiEmbeddingService embeddingService;
+    private final EmbeddingService embeddingService;
     private final VectorSearchService vectorSearchService;
     private final LLMService llmService;
     private final StreamingChatLanguageModel streamingChatModel;
@@ -60,7 +60,7 @@ public class RAGService {
     private final boolean includeHistory;
     
     public RAGService(
-            GeminiEmbeddingService embeddingService,
+            EmbeddingService embeddingService,
             VectorSearchService vectorSearchService,
             LLMService llmService,
             @Qualifier("geminiStreamingChatModel") StreamingChatLanguageModel streamingChatModel,

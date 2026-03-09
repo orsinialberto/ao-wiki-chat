@@ -3,7 +3,7 @@ package com.example.ao_wiki_chat.controller;
 import com.example.ao_wiki_chat.model.dto.DatabaseHealthResponse;
 import com.example.ao_wiki_chat.model.dto.GeminiHealthResponse;
 import com.example.ao_wiki_chat.model.dto.HealthResponse;
-import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
+import com.example.ao_wiki_chat.service.EmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -34,17 +34,17 @@ public class HealthController {
     private static final String GEMINI_UNAVAILABLE = "unavailable";
 
     private final DataSource dataSource;
-    private final GeminiEmbeddingService geminiEmbeddingService;
+    private final EmbeddingService geminiEmbeddingService;
 
     /**
      * Constructs a HealthController with required dependencies.
      *
      * @param dataSource the data source for database connectivity checks
-     * @param geminiEmbeddingService the Gemini embedding service for API availability checks
+     * @param geminiEmbeddingService the embedding service for API availability checks
      */
     public HealthController(
             DataSource dataSource,
-            GeminiEmbeddingService geminiEmbeddingService
+            EmbeddingService geminiEmbeddingService
     ) {
         this.dataSource = dataSource;
         this.geminiEmbeddingService = geminiEmbeddingService;

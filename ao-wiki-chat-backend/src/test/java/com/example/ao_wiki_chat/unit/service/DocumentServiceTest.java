@@ -1,23 +1,16 @@
 package com.example.ao_wiki_chat.unit.service;
 
-import com.example.ao_wiki_chat.service.ChunkingService;
-import com.example.ao_wiki_chat.service.DocumentService;
-import com.example.ao_wiki_chat.service.GeminiEmbeddingService;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-
-import jakarta.persistence.EntityNotFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,6 +39,11 @@ import com.example.ao_wiki_chat.model.entity.Document;
 import com.example.ao_wiki_chat.model.enums.DocumentStatus;
 import com.example.ao_wiki_chat.repository.ChunkRepository;
 import com.example.ao_wiki_chat.repository.DocumentRepository;
+import com.example.ao_wiki_chat.service.ChunkingService;
+import com.example.ao_wiki_chat.service.DocumentService;
+import com.example.ao_wiki_chat.service.EmbeddingService;
+
+import jakarta.persistence.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {
@@ -63,7 +61,7 @@ class DocumentServiceTest {
     private ChunkingService chunkingService;
 
     @Mock
-    private GeminiEmbeddingService embeddingService;
+    private EmbeddingService embeddingService;
 
     @Mock
     private DocumentParser documentParser;
