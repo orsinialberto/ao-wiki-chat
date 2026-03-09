@@ -143,6 +143,9 @@ wikichat query "What is the main topic?"
 
 # Start interactive mode
 wikichat interactive
+
+# List all documents
+wikichat list --format plain
 ```
 
 ### Available Commands
