@@ -31,72 +31,17 @@ docker-compose ps
 
 ```
 
-### 2. Database Connection Verification
-
-```bash
-# Connect to the PostgreSQL database
-docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat
-```
-
-Inside the `psql` shell, run:
-
-```sql
--- Verify installed extensions (should include 'vector')
-\dx
-
--- List all tables
-\dt
-
--- Show chunks table structure with vector embedding
-\d chunks
-
--- Verify PostgreSQL version
-SELECT version();
-
--- Exit psql
-\q
-```
-
-### 3. Shutdown and Cleanup
-
-```bash
-# Stop containers
-docker-compose down
-
-# Stop containers and remove volumes (WARNING: deletes all data)
-docker-compose down -v
-```
-
----
-
-## 🔧 Configuration
-
-### Database Credentials (Development)
-
-- **Host**: localhost
-- **Port**: 5432
-- **Database**: wikichat
-- **User**: wikichat_user
-- **Password**: wikichat_password
-
-⚠️ **IMPORTANT**: These credentials are for local development only. Do not use them in production!
-
-### Environment Variables
+### 2. Environment Variables
 
 Spring Boot reads environment variables from your system environment:
 
 **Export in your shell session**
 ```bash
 export GEMINI_API_KEY=your_api_key_here
-
-source ~/.bashrc  # oppure ~/.zshrc
 ```
 
----
 
-## Build and Start Application
-
-### Download Dependences
+### 3. Download Dependences
 ```bash
 ./mvnw clean install
 ```
@@ -104,6 +49,15 @@ source ~/.bashrc  # oppure ~/.zshrc
 ### Run from project root, specifying the backend module
 ```bash
 ./mvnw spring-boot:run -pl ao-wiki-chat-backend
+```
+
+### Running tests
+
+To run the tests you must have Docker running and the project containers started (e.g. with `docker-compose up -d`). The tests rely on services (PostgreSQL, etc.) provided by the containers.
+
+```bash
+# Run the tests
+./mvnw test
 ```
 
 ---
@@ -120,10 +74,7 @@ WikiChat includes a powerful CLI for interacting with the system from the comman
 
 # Install wrapper script (Unix/macOS)
 chmod +x scripts/wikichat
-export PATH="$PATH:$(pwd)/scripts"
-
-# Or use directly
-java -jar ao-wiki-chat-cli/target/ao-wiki-chat-cli-0.0.1-SNAPSHOT.jar --help
+export PATH="$PATH:$(pwd)/scripts"s
 ```
 
 ### Basic Usage
