@@ -12,7 +12,7 @@ RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD,
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -62,7 +62,7 @@ To run the tests you must have Docker running and the project containers started
 
 ---
 
-## 💻 Command-Line Interface (CLI)
+## Command-Line Interface (CLI)
 
 WikiChat includes a powerful CLI for interacting with the system from the command line.
 
@@ -121,17 +121,11 @@ docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT d
 docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT COUNT(*) as total_chunks, COUNT(embedding) as chunks_with_embeddings, COUNT(*) - COUNT(embedding) as chunks_without_embeddings FROM chunks;"
 ```
 
-### Documentation
-
-For complete CLI documentation, see [CLI_README.md](ao-wiki-chat-cli/CLI_README.md).
-
 ---
 
-## 📚 Documentation
+## Documentation
 
-- [AGENTS.md](AGENTS.md) - Guidelines for developers and AI agents
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture and technical design
-- [CLI_README.md](ao-wiki-chat-cli/CLI_README.md) - CLI user guide and reference
 - [docs/CHUNKING_LOGIC.md](docs/CHUNKING_LOGIC.md) - Chunking algorithm explained
 
 ---

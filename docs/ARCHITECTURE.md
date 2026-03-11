@@ -944,11 +944,6 @@ spring:
 ## References
 
 - [README.md](../README.md) - Project overview and quick start
-- [AGENTS.md](../AGENTS.md) - Development guidelines
-- [CLI_README.md](../ao-wiki-chat-cli/CLI_README.md) - CLI documentation
 - [CHUNKING_LOGIC.md](./CHUNKING_LOGIC.md) - Detailed chunking algorithm
 
 ---
-
-**Last Updated**: January 2025  
-**Version**: 0.0.1-SNAPSHOT

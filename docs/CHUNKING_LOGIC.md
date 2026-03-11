@@ -2,27 +2,27 @@
 
 ## Overview
 
-Il `ChunkingService` implementa una strategia **Hybrid Semantic + Sliding Window** per dividere documenti in chunk ottimizzati per l'embedding e la ricerca vettoriale. L'obiettivo è creare frammenti di testo che:
+The `ChunkingService` implements a **Hybrid Semantic + Sliding Window** strategy to split documents into chunks optimised for embedding and vector search. The goal is to produce text fragments that:
 
-1. ✅ Preservano il significato semantico (no split a metà frase)
-2. ✅ Hanno dimensione uniforme (~125 token / 500 caratteri)
-3. ✅ Mantengono contesto ai confini (overlap 10%)
-4. ✅ Sono adatti per l'embedding con Gemini
+1. Preserve semantic meaning (no mid-sentence splits)
+2. Have uniform size (~125 tokens / 500 characters)
+3. Keep context at boundaries (10% overlap)
+4. Are suitable for embedding with Gemini
 
 ---
 
-## Pipeline di Chunking
+## Chunking Pipeline
 
 ```
-Input Text (documento completo)
+Input Text (full document)
     ↓
 [1] Preprocessing
     ↓
-[2] Split Semantico (paragrafi → frasi → parole)
+[2] Semantic Split (paragraphs → sentences → words)
     ↓
-[3] Applicazione Overlap
+[3] Overlap Application
     ↓
-[4] Filtraggio Chunk Piccoli
+[4] Small Chunk Filtering
     ↓
 Output: List<String> chunks
 ```
@@ -31,26 +31,26 @@ Output: List<String> chunks
 
 ## 1. Preprocessing
 
-### Operazioni
+### Operations
 
 ```java
-// Normalizzazione line endings
+// Normalise line endings
 text = text.replace("\r\n", "\n").replace("\r", "\n");
 
-// Rimozione caratteri di controllo (esclusi \n e \t)
+// Remove control characters (except \n and \t)
 text = text.replaceAll("[\\p{Cntrl}&&[^\n\t]]", "");
 
-// Trim whitespace iniziale/finale
+// Trim leading/trailing whitespace
 text = text.trim();
 ```
 
-### Scopo
+### Purpose
 
-- **Uniformità**: tutti i documenti hanno lo stesso formato
-- **Pulizia**: rimuove caratteri nascosti/invisibili
-- **Preservazione struttura**: mantiene newline e tab per semantica
+- **Consistency**: all documents use the same format
+- **Cleanup**: removes hidden/invisible characters
+- **Structure preservation**: keeps newlines and tabs for semantics
 
-### Esempio
+### Example
 
 **Before**:
 ```
@@ -64,113 +64,113 @@ text = text.trim();
 
 ---
 
-## 2. Split Semantico (Cascading Strategy)
+## 2. Semantic Split (Cascading Strategy)
 
-### Algoritmo a 3 Livelli
+### 3-Level Algorithm
 
 ```
 Level 1: PARAGRAPHS (\n\n)
-    ↓ se paragrafo > chunkSize
+    ↓ if paragraph > chunkSize
 Level 2: SENTENCES (. ! ?)
-    ↓ se frase > chunkSize
+    ↓ if sentence > chunkSize
 Level 3: WORDS (whitespace)
-    ↓ se parola > chunkSize (raro)
-Level 4: CHARACTERS (forzato)
+    ↓ if word > chunkSize (rare)
+Level 4: CHARACTERS (forced)
 ```
 
-### Level 1: Split su Paragrafi
+### Level 1: Split on Paragraphs
 
-**Delimitatore**: `\n\n+` (doppio newline o più)
+**Delimiter**: `\n\n+` (double newline or more)
 
 ```java
 String[] paragraphs = text.split("\n\n+");
 ```
 
-**Logica**:
-- Prova ad accumulare paragrafi in un chunk
-- Se aggiungere il prossimo paragrafo sfora `chunkSize`, salva il chunk corrente
-- Se un singolo paragrafo è troppo grande → passa a Level 2
+**Logic**:
+- Try to accumulate paragraphs into one chunk
+- If adding the next paragraph exceeds `chunkSize`, save the current chunk
+- If a single paragraph is too large → go to Level 2
 
-**Esempio**:
+**Example**:
 
 ```
 Input (chunkSize=100):
 """
-Paragrafo 1: breve testo qui.
+Paragraph 1: short text here.
 
-Paragrafo 2: altro testo breve.
+Paragraph 2: more short text.
 
-Paragrafo 3: testo finale.
+Paragraph 3: final text.
 """
 
 Output:
-Chunk 1: "Paragrafo 1: breve testo qui.\n\nParagrafo 2: altro testo breve."
-Chunk 2: "Paragrafo 3: testo finale."
+Chunk 1: "Paragraph 1: short text here.\n\nParagraph 2: more short text."
+Chunk 2: "Paragraph 3: final text."
 ```
 
 ---
 
-### Level 2: Split su Frasi
+### Level 2: Split on Sentences
 
-**Delimitatore**: `(?<=[.!?])\\s+` (regex per fine frase)
+**Delimiter**: `(?<=[.!?])\\s+` (regex for end of sentence)
 
-Attivato quando: `paragraph.length() > chunkSize`
+Used when: `paragraph.length() > chunkSize`
 
 ```java
 String[] sentences = SENTENCE_PATTERN.split(paragraph);
 ```
 
-**Logica**:
-- Accumula frasi fino a riempire il chunk
-- Preserva punteggiatura e struttura
-- Se una frase è troppo grande → passa a Level 3
+**Logic**:
+- Accumulate sentences until the chunk is full
+- Preserve punctuation and structure
+- If a sentence is too large → go to Level 3
 
-**Esempio**:
+**Example**:
 
 ```
 Input (chunkSize=50):
-"Prima frase molto lunga qui. Seconda frase. Terza frase con testo."
+"First very long sentence here. Second sentence. Third sentence with text."
 
 Output:
-Chunk 1: "Prima frase molto lunga qui. Seconda frase."
-Chunk 2: "Terza frase con testo."
+Chunk 1: "First very long sentence here. Second sentence."
+Chunk 2: "Third sentence with text."
 ```
 
 ---
 
-### Level 3: Split su Parole
+### Level 3: Split on Words
 
-**Delimitatore**: `\\s+` (whitespace)
+**Delimiter**: `\\s+` (whitespace)
 
-Attivato quando: `sentence.length() > chunkSize`
+Used when: `sentence.length() > chunkSize`
 
 ```java
 String[] words = text.split("\\s+");
 ```
 
-**Logica**:
-- Split forzato su parole per rispettare `chunkSize`
-- Ultima risorsa per testi senza punteggiatura
-- Preserva integrità delle parole
+**Logic**:
+- Forced split on word boundaries to respect `chunkSize`
+- Fallback for text without punctuation
+- Preserves word integrity
 
-**Esempio**:
+**Example**:
 
 ```
 Input (chunkSize=30):
-"parola1 parola2 parola3 parola4 parola5 parola6"
+"word1 word2 word3 word4 word5 word6"
 
 Output:
-Chunk 1: "parola1 parola2 parola3"
-Chunk 2: "parola4 parola5 parola6"
+Chunk 1: "word1 word2 word3"
+Chunk 2: "word4 word5 word6"
 ```
 
 ---
 
-### Level 4: Split Caratteri (Caso Estremo)
+### Level 4: Character Split (Edge Case)
 
-Attivato quando: `word.length() > chunkSize` (rarissimo)
+Used when: `word.length() > chunkSize` (very rare)
 
-**Esempio**:
+**Example**:
 ```
 Input (chunkSize=10):
 "supercalifragilisticexpialidocious"
@@ -184,87 +184,87 @@ Chunk 4: "ious"
 
 ---
 
-## 3. Applicazione Overlap
+## 3. Overlap Application
 
 ### Sliding Window
 
-Dopo lo split semantico, viene applicato un overlap tra chunk consecutivi:
+After the semantic split, overlap is applied between consecutive chunks:
 
 ```
 Chunk 1: [A B C D E F G H]
-                    ↓ overlap (ultimi N caratteri)
+                    ↓ overlap (last N characters)
 Chunk 2:         [F G H | I J K L M]
                           ↓ overlap
 Chunk 3:                 [L M | N O P Q R]
 ```
 
-### Implementazione
+### Implementation
 
 ```java
 for (int i = 1; i < chunks.size(); i++) {
     String previousChunk = chunks.get(i - 1);
     String currentChunk = chunks.get(i);
     
-    // Estrai ultimi N caratteri del chunk precedente
+    // Extract last N characters of previous chunk
     String overlapText = getLastNCharacters(previousChunk, overlap);
     
-    // Prependi al chunk corrente
+    // Prepend to current chunk
     currentChunk = overlapText + "\n" + currentChunk;
 }
 ```
 
 ### Smart Overlap
 
-La funzione `getLastNCharacters()` è intelligente:
+The `getLastNCharacters()` function is smart:
 
 ```java
-// Cerca il primo spazio per evitare parole tagliate
+// Look for first space to avoid cutting words
 String substring = text.substring(text.length() - n);
 int firstSpace = substring.indexOf(' ');
 
 if (firstSpace > 0 && firstSpace < n / 2) {
-    // Skip al primo spazio per non iniziare a metà parola
+    // Skip to first space so we don't start mid-word
     return substring.substring(firstSpace + 1);
 }
 ```
 
-### Perché l'Overlap?
+### Why Overlap?
 
-1. **Cattura info ai confini**: se una frase è divisa tra 2 chunk, l'overlap la recupera
-2. **Migliora retrieval**: più probabilità di trovare il chunk giusto
-3. **Context continuity**: l'AI ha più contesto per rispondere
+1. **Captures boundary info**: if a sentence is split across 2 chunks, overlap recovers it
+2. **Better retrieval**: higher chance of finding the right chunk
+3. **Context continuity**: the model has more context to answer
 
-**Esempio Pratico**:
+**Practical Example**:
 
 ```
-Senza overlap:
-Chunk 1: "...la causa principale è il"
-Chunk 2: "surriscaldamento del processore..."
+Without overlap:
+Chunk 1: "...the main cause is the"
+Chunk 2: "processor overheating..."
 
-Query: "Qual è la causa del surriscaldamento?"
-→ Può matchare solo Chunk 2 (incompleto)
+Query: "What is the cause of overheating?"
+→ Can only match Chunk 2 (incomplete)
 
-Con overlap (15%):
-Chunk 1: "...la causa principale è il"
-Chunk 2: "causa principale è il surriscaldamento del processore..."
+With overlap (15%):
+Chunk 1: "...the main cause is the"
+Chunk 2: "main cause is the processor overheating..."
 
-Query: "Qual è la causa del surriscaldamento?"
-→ Matcha Chunk 2 con contesto completo! ✅
+Query: "What is the cause of overheating?"
+→ Matches Chunk 2 with full context! ✅
 ```
 
 ---
 
-## 4. Filtraggio Chunk Piccoli
+## 4. Small Chunk Filtering
 
-### Costante
+### Constant
 
 ```java
 private static final int MIN_CHUNK_SIZE = 50;
 ```
 
-### Logica
+### Logic
 
-Rimuove chunk troppo piccoli che non fornirebbero contesto utile:
+Removes chunks that are too small to provide useful context:
 
 ```java
 List<String> filtered = chunks.stream()
@@ -272,13 +272,13 @@ List<String> filtered = chunks.stream()
     .toList();
 ```
 
-### Perché?
+### Why?
 
-- Chunk di 10-20 caratteri sono inutili per l'embedding
-- Sprecano risorse (API calls, storage)
-- Riducono qualità retrieval (noise)
+- 10–20 character chunks are poor for embedding
+- They waste resources (API calls, storage)
+- They reduce retrieval quality (noise)
 
-**Esempio**:
+**Example**:
 
 ```
 Before filtering:
@@ -290,36 +290,36 @@ After filtering:
 
 ---
 
-## Parametri di Configurazione
+## Configuration Parameters
 
 ### application.yml
 
 ```yaml
 rag:
   chunk:
-    size: 500       # ~125 token (500 / 4 char/token)
+    size: 500       # ~125 tokens (500 / 4 char/token)
     overlap: 50     # 10% overlap (50 / 500)
 ```
 
-### Perché 500 caratteri?
+### Why 500 characters?
 
-- **Token estimate**: ~4 caratteri/token → 500 char = ~125 token
-- **Context window**: chunk più piccoli per maggiore precisione nel retrieval
-- **Gemini embedding**: dimensione ottimale per granularità fine con gemini-embedding-001
-- **Balanced approach**: 100-200 token permette retrieval accurato senza perdere contesto
+- **Token estimate**: ~4 characters/token → 500 char ≈ 125 tokens
+- **Context window**: smaller chunks for more precise retrieval
+- **Gemini embedding**: good size for fine granularity with gemini-embedding-001
+- **Balance**: 100–200 tokens allow accurate retrieval without losing context
 
-### Perché 10% overlap?
+### Why 10% overlap?
 
-- **Balance**: cattura confini senza troppa duplicazione
-- **Storage efficiency**: non esplode il DB
-- **Retrieval quality**: migliora accuracy senza overwhelm
-- **Best practice**: 10-15% è standard nei sistemi RAG
+- **Balance**: captures boundaries without too much duplication
+- **Storage**: avoids blowing up the DB
+- **Retrieval quality**: improves accuracy without overload
+- **Best practice**: 10–15% is standard in RAG systems
 
 ---
 
-## Esempi Completi
+## Complete Examples
 
-### Esempio 1: Documento Markdown
+### Example 1: Markdown Document
 
 **Input**:
 ```markdown
@@ -369,14 +369,14 @@ Chunk 3 (75 chars):
 2. mvn spring-boot:run"
 ```
 
-**Note**:
-- ✅ Split su headers (`##`)
-- ✅ Liste mantenute insieme
-- ✅ Overlap preserva contesto
+**Notes**:
+- Split on headers (`##`)
+- Lists kept together
+- Overlap preserves context
 
 ---
 
-### Esempio 2: Testo Narrativo
+### Example 2: Narrative Text
 
 **Input**:
 ```
@@ -409,14 +409,14 @@ Chunk 3 (122 chars):
 worldwide. Röntgen refused to patent his discovery,"
 ```
 
-**Note**:
-- ✅ Split su frasi (`. `)
-- ✅ Overlap cattura contesto
-- ✅ Unicode (ö) preservato
+**Notes**:
+- Split on sentences (`. `)
+- Overlap captures context
+- Unicode (ö) preserved
 
 ---
 
-### Esempio 3: Edge Case - Testo Senza Punteggiatura
+### Example 3: Edge Case – Text Without Punctuation
 
 **Input**:
 ```
@@ -435,14 +435,14 @@ Chunk 3: "word10 word11 word12 word13 word14"
 Chunk 4: "word14 word15"
 ```
 
-**Note**:
-- ✅ Fallback a word splitting
-- ✅ Overlap applicato
-- ✅ Nessun dato perso
+**Notes**:
+- Fallback to word splitting
+- Overlap applied
+- No data lost
 
 ---
 
-## Diagramma Decisionale
+## Decision Diagram
 
 ```
 ┌─────────────────────────────────┐
@@ -511,28 +511,28 @@ Chunk 4: "word14 word15"
 
 ## Performance Considerations
 
-### Complessità Temporale
+### Time Complexity
 
-- **Caso medio**: O(n) dove n = lunghezza testo
-  - Split su regex: O(n)
-  - Accumulo chunk: O(n)
-  - Apply overlap: O(k) dove k = numero chunk
-  
-- **Caso peggiore**: O(n²) per testi patologici senza whitespace
+- **Average case**: O(n) where n = text length
+  - Regex split: O(n)
+  - Chunk accumulation: O(n)
+  - Apply overlap: O(k) where k = number of chunks
 
-### Complessità Spaziale
+- **Worst case**: O(n²) for pathological text without whitespace
 
-- O(n + k×m) dove:
-  - n = testo originale
-  - k = numero chunk
-  - m = dimensione media chunk
+### Space Complexity
 
-### Ottimizzazioni
+- O(n + k×m) where:
+  - n = original text
+  - k = number of chunks
+  - m = average chunk size
 
-1. **StringBuilder**: evita concatenazione String inefficiente
-2. **Regex precompilata**: `SENTENCE_PATTERN` è costante
-3. **Early return**: testo corto → 1 chunk senza processing
-4. **Stream filtering**: operazione lazy
+### Optimisations
+
+1. **StringBuilder**: avoids inefficient String concatenation
+2. **Precompiled regex**: `SENTENCE_PATTERN` is a constant
+3. **Early return**: short text → 1 chunk without processing
+4. **Stream filtering**: lazy operation
 
 ---
 
@@ -540,14 +540,14 @@ Chunk 4: "word14 word15"
 
 ### Test Coverage
 
-Il `ChunkingServiceImplTest` copre:
+`ChunkingServiceImplTest` covers:
 
-- ✅ **Basic functionality** (26 test)
-- ✅ **Parameter validation**
-- ✅ **Semantic splitting**
-- ✅ **Overlap mechanics**
-- ✅ **Edge cases** (empty, single word, unicode)
-- ✅ **Realistic documents**
+- Basic functionality (26 tests)
+- Parameter validation
+- Semantic splitting
+- Overlap behaviour
+- Edge cases (empty, single word, unicode)
+- Realistic documents
 
 ### Test Examples
 
@@ -557,7 +557,7 @@ void splitPreservesParagraphBoundaries() {
     String text = "Para 1.\n\nPara 2.\n\nPara 3.";
     List<String> chunks = service.splitIntoChunks(text, 80, 0);
     
-    // Verifica che paragrafi non siano mescolati
+    // Ensure paragraphs are not mixed
     for (String chunk : chunks) {
         assertThat(chunk.split("\n\n").length).isLessThanOrEqualTo(2);
     }
@@ -568,11 +568,11 @@ void overlapIncludesPreviousContent() {
     String text = "AAAAA BBBBB CCCCC DDDDD...";
     List<String> chunks = service.splitIntoChunks(text, 80, 15);
     
-    // Verifica overlap tra chunk consecutivi
+    // Verify overlap between consecutive chunks
     if (chunks.size() > 1) {
         String prev = chunks.get(0);
         String curr = chunks.get(1);
-        // curr dovrebbe contenere parte finale di prev
+        // curr should contain end portion of prev
     }
 }
 ```
@@ -581,91 +581,91 @@ void overlapIncludesPreviousContent() {
 
 ## Best Practices
 
-### Do's ✅
+### Do's
 
-1. **Use default parameters** from `application.yml` quando possibile
-2. **Monitor chunk distribution**: verifica che dimensioni siano uniformi
-3. **Log chunk metrics**: numero, dimensione media, min/max
-4. **Validate input**: controlla text non null/empty prima di chiamare
-5. **Test con documenti reali**: MD, HTML, PDF vari
+1. Use default parameters from `application.yml` when possible
+2. Monitor chunk distribution: check that sizes are uniform
+3. Log chunk metrics: count, average size, min/max
+4. Validate input: ensure text is not null/empty before calling
+5. Test with real documents: various MD, HTML, PDF
 
-### Don'ts ❌
+### Don'ts
 
-1. **Non usare chunk troppo piccoli** (<100 char) - poco contesto
-2. **Non usare chunk troppo grandi** (>5000 char) - embedding inefficaci
-3. **Non impostare overlap ≥ chunkSize** - duplicazione totale
-4. **Non ignorare i warning** nel log (chunk filtrati, dimensioni anomale)
-5. **Non assumere UTF-8**: il servizio gestisce unicode correttamente
+1. Don't use chunks that are too small (<100 char) – little context
+2. Don't use chunks that are too large (>5000 char) – poor embedding
+3. Don't set overlap ≥ chunkSize – full duplication
+4. Don't ignore log warnings (filtered chunks, unusual sizes)
+5. Don't assume UTF-8: the service handles unicode correctly
 
 ---
 
 ## Future Enhancements
 
-### Possibili Miglioramenti
+### Possible Improvements
 
 1. **Document-aware splitting**:
-   - Markdown: split su headers (`#`, `##`)
-   - HTML: split su `<section>`, `<article>`
-   - PDF: rispetta page boundaries
+   - Markdown: split on headers (`#`, `##`)
+   - HTML: split on `<section>`, `<article>`
+   - PDF: respect page boundaries
 
 2. **Smart overlap**:
-   - Overlap dinamico basato su tipo contenuto
-   - Maggiore overlap per testi tecnici
-   - Minore overlap per narrativa
+   - Dynamic overlap by content type
+   - Higher overlap for technical text
+   - Lower overlap for narrative
 
 3. **Token counting**:
-   - Integrazione libreria token counting (jtokkit)
-   - Split basato su token reali vs caratteri
+   - Integrate a token-counting library (e.g. jtokkit)
+   - Split on real tokens instead of characters
 
 4. **Caching**:
-   - Cache chunk per documenti identici
-   - Evita re-chunking su upload duplicati
+   - Cache chunks for identical documents
+   - Avoid re-chunking on duplicate uploads
 
 5. **Metrics**:
-   - Histogram dimensioni chunk
-   - Distribution semantic boundaries
+   - Chunk size histogram
+   - Semantic boundary distribution
    - Overlap effectiveness score
 
 ---
 
 ## Troubleshooting
 
-### Problema: Chunk troppo piccoli filtrati
+### Issue: Too many small chunks filtered
 
-**Sintomo**: Log mostra "Filtered out N small chunks"
+**Symptom**: Log shows "Filtered out N small chunks"
 
-**Causa**: `chunkSize` troppo piccolo o documento con paragrafi brevissimi
+**Cause**: `chunkSize` too small or document with very short paragraphs
 
-**Soluzione**:
+**Solution**:
 ```yaml
 rag:
   chunk:
-    size: 1000  # Aumenta da 500 a 1000 se necessario
+    size: 1000  # Increase from 500 to 1000 if needed
 ```
 
 ---
 
-### Problema: Chunk contengono testo tagliato
+### Issue: Chunks contain cut-off text
 
-**Sintomo**: Chunk iniziano/finiscono a metà parola
+**Symptom**: Chunks start/end mid-word
 
-**Causa**: Documento senza punteggiatura/whitespace (raro)
+**Cause**: Document without punctuation/whitespace (rare)
 
-**Soluzione**: Verificato che `getLastNCharacters()` cerca word boundary
+**Solution**: Confirm that `getLastNCharacters()` looks for word boundaries
 
 ---
 
-### Problema: Troppi chunk per documento
+### Issue: Too many chunks per document
 
-**Sintomo**: 1000+ chunk per un documento di 50 pagine
+**Symptom**: 1000+ chunks for a 50-page document
 
-**Causa**: `chunkSize` troppo piccolo
+**Cause**: `chunkSize` too small
 
-**Soluzione**:
+**Solution**:
 ```yaml
 rag:
   chunk:
-    size: 1000  # Aumenta dimensione chunk se troppi frammenti
+    size: 1000  # Increase chunk size if too many fragments
 ```
 
 ---
@@ -681,4 +681,3 @@ rag:
 **Last Updated**: December 2025  
 **Version**: 1.0  
 **Author**: WikiChat Development Team
-
