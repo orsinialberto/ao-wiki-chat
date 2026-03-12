@@ -99,6 +99,24 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles RerankerException (500 Internal Server Error).
+     * Used when reranking of search results fails (e.g. Cohere API error).
+     */
+    @ExceptionHandler(RerankerException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<ErrorResponse> handleRerankerException(
+            RerankerException ex, HttpServletRequest request) {
+        log.error("Reranker failed: {}", ex.getMessage(), ex);
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Internal Server Error",
+                "Reranking failed. Please try again later.",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+
+    /**
      * Handles LLMException (500 Internal Server Error).
      * Used when LLM operations fail.
      */

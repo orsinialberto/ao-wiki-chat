@@ -3,6 +3,7 @@ package com.example.ao_wiki_chat.unit.service;
 import com.example.ao_wiki_chat.service.EmbeddingService;
 import com.example.ao_wiki_chat.service.LLMService;
 import com.example.ao_wiki_chat.service.RAGService;
+import com.example.ao_wiki_chat.service.RerankerService;
 import com.example.ao_wiki_chat.service.VectorSearchService;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import java.lang.reflect.Method;
@@ -18,10 +19,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -55,6 +60,9 @@ class RAGServiceTest {
     
     @Mock
     private VectorSearchService vectorSearchService;
+
+    @Mock
+    private RerankerService rerankerService;
     
     @Mock
     private LLMService llmService;
@@ -82,14 +90,19 @@ class RAGServiceTest {
     
     @BeforeEach
     void setUp() {
+        lenient().when(rerankerService.isActive()).thenReturn(false);
+        lenient().when(rerankerService.rerank(anyString(), anyList(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
         ragService = new RAGService(
             embeddingService,
             vectorSearchService,
+            rerankerService,
             llmService,
             streamingChatModel,
             conversationRepository,
             messageRepository,
-            10, // maxHistoryMessages
+            6,   // searchTopK
+            3,   // rerankerCandidateFactor
+            10,  // maxHistoryMessages
             true // includeHistory
         );
         
@@ -143,7 +156,7 @@ class RAGServiceTest {
         String expectedAnswer = "Machine learning is a subset of AI that enables systems to learn from data.";
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -164,7 +177,8 @@ class RAGServiceTest {
         
         // Verify interactions
         verify(embeddingService).generateEmbedding(TEST_QUERY);
-        verify(vectorSearchService).findSimilarChunks(testQueryEmbedding);
+        verify(vectorSearchService).findSimilarChunks(eq(testQueryEmbedding), eq(6));
+        verify(rerankerService).rerank(eq(TEST_QUERY), eq(relevantChunks), eq(6));
         verify(llmService).generate(anyString());
         verify(conversationRepository).findBySessionId(TEST_SESSION_ID);
         verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
@@ -178,7 +192,7 @@ class RAGServiceTest {
         List<Chunk> emptyChunks = Collections.emptyList();
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(emptyChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(emptyChunks);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
         when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
@@ -199,6 +213,32 @@ class RAGServiceTest {
         verify(messageRepository).findByConversation_IdOrderByCreatedAtAsc(testConversation.getId());
         verify(messageRepository, times(2)).save(any(com.example.ao_wiki_chat.model.entity.Message.class));
     }
+
+    @Test
+    void processQueryWhenRerankerActiveFetchesMoreCandidatesThenReranks() {
+        when(rerankerService.isActive()).thenReturn(true);
+        List<Chunk> manyChunks = Arrays.asList(testChunk1, testChunk2, testChunk1, testChunk2, testChunk1, testChunk2,
+                testChunk1, testChunk2, testChunk1, testChunk2, testChunk1, testChunk2);
+        List<Chunk> rerankedChunks = Arrays.asList(testChunk2, testChunk1);
+        when(rerankerService.rerank(eq(TEST_QUERY), eq(manyChunks), eq(6))).thenReturn(rerankedChunks);
+        RAGService serviceWithReranker = new RAGService(
+                embeddingService, vectorSearchService, rerankerService, llmService,
+                streamingChatModel, conversationRepository, messageRepository,
+                6, 3, 10, true);
+        ChatRequest request = new ChatRequest(TEST_QUERY, TEST_SESSION_ID);
+        when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), eq(18))).thenReturn(manyChunks);
+        when(llmService.generate(anyString())).thenReturn("Answer");
+        when(conversationRepository.findBySessionId(TEST_SESSION_ID)).thenReturn(Optional.of(testConversation));
+        when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId())).thenReturn(Collections.emptyList());
+        when(messageRepository.save(any(com.example.ao_wiki_chat.model.entity.Message.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ChatResponse response = serviceWithReranker.processQuery(request);
+
+        assertThat(response).isNotNull();
+        verify(vectorSearchService).findSimilarChunks(eq(testQueryEmbedding), eq(18));
+        verify(rerankerService).rerank(eq(TEST_QUERY), eq(manyChunks), eq(6));
+    }
     
     @Test
     void processQueryWhenNewSessionCreatesNewConversation() {
@@ -208,7 +248,7 @@ class RAGServiceTest {
         String expectedAnswer = "Test answer";
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.empty());
@@ -275,7 +315,7 @@ class RAGServiceTest {
                 .isInstanceOf(EmbeddingException.class)
                 .hasMessageContaining("Embedding generation failed");
         
-        verify(vectorSearchService, never()).findSimilarChunks(any());
+        verify(vectorSearchService, never()).findSimilarChunks(any(), anyInt());
         verify(llmService, never()).generate(anyString());
     }
     
@@ -289,7 +329,7 @@ class RAGServiceTest {
                 .thenReturn(Optional.of(testConversation));
         when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
                 .thenReturn(Collections.emptyList());
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding))
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt()))
                 .thenThrow(new VectorSearchException("Vector search failed"));
         
         // When/Then
@@ -311,7 +351,7 @@ class RAGServiceTest {
                 .thenReturn(Optional.of(testConversation));
         when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(testConversation.getId()))
                 .thenReturn(Collections.emptyList());
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString()))
                 .thenThrow(new LLMException("LLM generation failed"));
         
@@ -329,7 +369,7 @@ class RAGServiceTest {
         String expectedAnswer = "Test answer";
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -361,7 +401,7 @@ class RAGServiceTest {
         String expectedAnswer = "Test answer";
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -423,7 +463,7 @@ class RAGServiceTest {
                 Arrays.asList(previousUserMessage, previousAssistantMessage);
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -452,7 +492,7 @@ class RAGServiceTest {
         String expectedAnswer = "Test answer";
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -720,7 +760,7 @@ class RAGServiceTest {
         String expectedAnswer = "Test answer";
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -774,7 +814,7 @@ class RAGServiceTest {
                 Arrays.asList(previousUserMessage, previousAssistantMessage);
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -831,7 +871,7 @@ class RAGServiceTest {
         }
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -872,11 +912,14 @@ class RAGServiceTest {
         RAGService ragServiceWithoutHistory = new RAGService(
             embeddingService,
             vectorSearchService,
+            rerankerService,
             llmService,
             streamingChatModel,
             conversationRepository,
             messageRepository,
-            10, // maxHistoryMessages
+            6,   // searchTopK
+            3,   // rerankerCandidateFactor
+            10,  // maxHistoryMessages
             false // includeHistory = false
         );
         
@@ -905,7 +948,7 @@ class RAGServiceTest {
                 Arrays.asList(previousUserMessage, previousAssistantMessage);
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));
@@ -960,7 +1003,7 @@ class RAGServiceTest {
                 Arrays.asList(previousUserMessage, previousAssistantMessage);
         
         when(embeddingService.generateEmbedding(TEST_QUERY)).thenReturn(testQueryEmbedding);
-        when(vectorSearchService.findSimilarChunks(testQueryEmbedding)).thenReturn(relevantChunks);
+        when(vectorSearchService.findSimilarChunks(eq(testQueryEmbedding), anyInt())).thenReturn(relevantChunks);
         when(llmService.generate(anyString())).thenReturn(expectedAnswer);
         when(conversationRepository.findBySessionId(TEST_SESSION_ID))
                 .thenReturn(Optional.of(testConversation));

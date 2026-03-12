@@ -11,6 +11,7 @@ import com.example.ao_wiki_chat.repository.MessageRepository;
 import com.example.ao_wiki_chat.service.EmbeddingService;
 import com.example.ao_wiki_chat.service.LLMService;
 import com.example.ao_wiki_chat.service.RAGService;
+import com.example.ao_wiki_chat.service.RerankerService;
 import com.example.ao_wiki_chat.service.VectorSearchService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -31,9 +32,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,6 +56,9 @@ class StreamingRAGServiceTest {
 
     @Mock
     private VectorSearchService vectorSearchService;
+
+    @Mock
+    private RerankerService rerankerService;
 
     @Mock
     private LLMService llmService;
@@ -75,13 +82,18 @@ class StreamingRAGServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(rerankerService.isActive()).thenReturn(false);
+        lenient().when(rerankerService.rerank(anyString(), anyList(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
         ragService = new RAGService(
                 embeddingService,
                 vectorSearchService,
+                rerankerService,
                 llmService,
                 streamingChatModel,
                 conversationRepository,
                 messageRepository,
+                6,
+                3,
                 10,
                 true
         );
@@ -125,7 +137,7 @@ class StreamingRAGServiceTest {
         when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(CONVERSATION_ID))
                 .thenReturn(Collections.emptyList());
         when(embeddingService.generateEmbedding(query)).thenReturn(queryEmbedding);
-        when(vectorSearchService.findSimilarChunks(queryEmbedding)).thenReturn(Arrays.asList(chunk1, chunk2));
+        when(vectorSearchService.findSimilarChunks(eq(queryEmbedding), anyInt())).thenReturn(Arrays.asList(chunk1, chunk2));
         when(messageRepository.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
 
         doAnswer(inv -> {
@@ -162,7 +174,7 @@ class StreamingRAGServiceTest {
         when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(CONVERSATION_ID))
                 .thenReturn(Collections.emptyList());
         when(embeddingService.generateEmbedding(query)).thenReturn(queryEmbedding);
-        when(vectorSearchService.findSimilarChunks(queryEmbedding)).thenReturn(Collections.emptyList());
+        when(vectorSearchService.findSimilarChunks(eq(queryEmbedding), anyInt())).thenReturn(Collections.emptyList());
         when(messageRepository.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AtomicReference<Message> completedMessage = new AtomicReference<>();
@@ -206,7 +218,7 @@ class StreamingRAGServiceTest {
         when(messageRepository.findByConversation_IdOrderByCreatedAtAsc(CONVERSATION_ID))
                 .thenReturn(Collections.emptyList());
         when(embeddingService.generateEmbedding(anyString())).thenReturn(queryEmbedding);
-        when(vectorSearchService.findSimilarChunks(queryEmbedding)).thenReturn(List.of(chunk1));
+        when(vectorSearchService.findSimilarChunks(eq(queryEmbedding), anyInt())).thenReturn(List.of(chunk1));
         doAnswer(inv -> {
             StreamingResponseHandler<AiMessage> h = inv.getArgument(1);
             h.onError(new RuntimeException("LLM failed"));

@@ -39,6 +39,7 @@ import dev.langchain4j.model.output.Response;
  * Coordinates the complete RAG pipeline:
  * 1. Generate embedding for user query
  * 2. Find relevant document chunks using vector search
+ * 2b. Optionally rerank chunks (when enabled) for better relevance
  * 3. Build context from chunks
  * 4. Generate structured prompt
  * 5. Call LLM to generate answer
@@ -52,34 +53,43 @@ public class RAGService {
     
     private final EmbeddingService embeddingService;
     private final VectorSearchService vectorSearchService;
+    private final RerankerService rerankerService;
     private final LLMService llmService;
     private final StreamingChatLanguageModel streamingChatModel;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final int searchTopK;
+    private final int rerankerCandidateFactor;
     private final int maxHistoryMessages;
     private final boolean includeHistory;
-    
+
     public RAGService(
             EmbeddingService embeddingService,
             VectorSearchService vectorSearchService,
+            RerankerService rerankerService,
             LLMService llmService,
             @Qualifier("chatStreamingModel") StreamingChatLanguageModel streamingChatModel,
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
+            @Value("${rag.search.top-k:6}") int searchTopK,
+            @Value("${rag.reranker.candidate-factor:3}") int rerankerCandidateFactor,
             @Value("${rag.conversation.max-history-messages:10}") int maxHistoryMessages,
             @Value("${rag.conversation.include-history:true}") boolean includeHistory
     ) {
         this.embeddingService = embeddingService;
         this.vectorSearchService = vectorSearchService;
+        this.rerankerService = rerankerService;
         this.llmService = llmService;
         this.streamingChatModel = streamingChatModel;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
+        this.searchTopK = searchTopK;
+        this.rerankerCandidateFactor = rerankerCandidateFactor;
         this.maxHistoryMessages = maxHistoryMessages;
         this.includeHistory = includeHistory;
-        
-        log.info("RAGService initialized with max history messages: {}, include history: {}", 
-                maxHistoryMessages, includeHistory);
+
+        log.info("RAGService initialized with max history messages: {}, include history: {}, reranker active: {}",
+                maxHistoryMessages, includeHistory, rerankerService.isActive());
     }
     
     /**
@@ -123,10 +133,12 @@ public class RAGService {
             float[] queryEmbedding = embeddingService.generateEmbedding(query);
             log.debug("Query embedding generated, dimension: {}", queryEmbedding.length);
             
-            // Step 2: Find relevant chunks using vector search
+            // Step 2: Find relevant chunks using vector search (fetch more when reranker is active)
             log.debug("Step 2: Searching for similar chunks");
-            List<Chunk> relevantChunks = vectorSearchService.findSimilarChunks(queryEmbedding);
-            log.info("Found {} relevant chunks", relevantChunks.size());
+            int retrievalTopK = rerankerService.isActive() ? (searchTopK * rerankerCandidateFactor) : searchTopK;
+            List<Chunk> rawChunks = vectorSearchService.findSimilarChunks(queryEmbedding, retrievalTopK);
+            List<Chunk> relevantChunks = rerankerService.rerank(query, rawChunks, searchTopK);
+            log.info("Found {} relevant chunks after retrieval and rerank", relevantChunks.size());
             
             if (relevantChunks.isEmpty()) {
                 log.warn("No relevant chunks found for query, returning empty response");
@@ -191,9 +203,11 @@ public class RAGService {
             List<Message> previousMessages = retrievePreviousMessages(conversationId);
 
             float[] queryEmbedding = embeddingService.generateEmbedding(query);
-            List<Chunk> relevantChunks = vectorSearchService.findSimilarChunks(queryEmbedding);
+            int retrievalTopK = rerankerService.isActive() ? (searchTopK * rerankerCandidateFactor) : searchTopK;
+            List<Chunk> rawChunks = vectorSearchService.findSimilarChunks(queryEmbedding, retrievalTopK);
+            List<Chunk> relevantChunks = rerankerService.rerank(query, rawChunks, searchTopK);
 
-            log.info("Found {} relevant chunks for streaming query", relevantChunks.size());
+            log.info("Found {} relevant chunks for streaming query after rerank", relevantChunks.size());
 
             if (relevantChunks.isEmpty()) {
                 String noContextAnswer = "I couldn't find any relevant information in the documents to answer your question.";

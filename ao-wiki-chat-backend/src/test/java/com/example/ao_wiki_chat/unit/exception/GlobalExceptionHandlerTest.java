@@ -4,6 +4,7 @@ import com.example.ao_wiki_chat.exception.DocumentParsingException;
 import com.example.ao_wiki_chat.exception.EmbeddingException;
 import com.example.ao_wiki_chat.exception.GlobalExceptionHandler;
 import com.example.ao_wiki_chat.exception.LLMException;
+import com.example.ao_wiki_chat.exception.RerankerException;
 import com.example.ao_wiki_chat.exception.VectorSearchException;
 import com.example.ao_wiki_chat.model.dto.ErrorResponse;
 import jakarta.persistence.EntityNotFoundException;
@@ -108,6 +109,23 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().status()).isEqualTo(500);
         assertThat(response.getBody().error()).isEqualTo("Internal Server Error");
         assertThat(response.getBody().message()).isEqualTo("Vector search operation failed. Please try again later.");
+        assertThat(response.getBody().path()).isEqualTo("/api/test");
+    }
+
+    @Test
+    void handleRerankerExceptionReturnsInternalServerError() {
+        // Given
+        RerankerException ex = new RerankerException("Rerank API failed");
+
+        // When
+        ResponseEntity<ErrorResponse> response = handler.handleRerankerException(ex, request);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(500);
+        assertThat(response.getBody().error()).isEqualTo("Internal Server Error");
+        assertThat(response.getBody().message()).isEqualTo("Reranking failed. Please try again later.");
         assertThat(response.getBody().path()).isEqualTo("/api/test");
     }
 

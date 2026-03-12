@@ -92,9 +92,20 @@ rag:
   vector:
     dimension: 1024
     distance-metric: cosine
+  # Reranker: second-stage ranking for better context quality (optional)
+  reranker:
+    enabled: false
+    candidate-factor: 3   # When enabled: fetch (top-k * candidate-factor) from vector search, then rerank to top-k
   conversation:
     max-history-messages: 5  # Maximum number of previous messages to include
     include-history: true     # Enable/disable conversation context (default: true)
+
+# Cohere API (only required when rag.reranker.enabled=true)
+cohere:
+  api:
+    key: ${COHERE_API_KEY:}
+  rerank:
+    model: rerank-v3.5
 
 management:
   endpoints:
