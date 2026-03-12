@@ -93,6 +93,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     dev.langchain4j: DEBUG
+    # Avoid verbose 429/rate-limit logs: RetryUtils logs full exception body + stack at WARN; we log a single line in GeminiEmbeddingService
+    dev.langchain4j.internal.RetryUtils: ERROR
   pattern:
     console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){blue} %clr([%5p]){highlight} %clr(%-40.40logger{39}){cyan} : %m%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

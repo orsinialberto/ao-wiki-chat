@@ -104,7 +104,7 @@ class UploadCommandTest {
 
         // Then
         assertThat(exitCode).isNotEqualTo(0);
-        assertThat(errorStream.toString()).contains("File not found");
+        assertThat(errorStream.toString()).contains("Path not found");
     }
 
     @Test
@@ -179,5 +179,46 @@ class UploadCommandTest {
         assertThat(exitCode).isEqualTo(0);
         assertThat(outputStream.toString()).contains("Document processing completed");
         verify(apiClient, atLeastOnce()).getDocument(documentId);
+    }
+
+    @Test
+    void runWhenDirectoryUploadsAllSupportedFilesAndReportsThem() throws Exception {
+        // Given: directory with two supported files
+        Path doc1 = tempDir.resolve("doc1.pdf");
+        Path doc2 = tempDir.resolve("doc2.txt");
+        Files.write(doc1, "pdf content".getBytes());
+        Files.write(doc2, "text content".getBytes());
+
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        CliDocumentUpload response1 = new CliDocumentUpload(
+                id1, "doc1.pdf", "application/pdf", 11L, "PENDING", LocalDateTime.now());
+        CliDocumentUpload response2 = new CliDocumentUpload(
+                id2, "doc2.txt", "text/plain", 12L, "PENDING", LocalDateTime.now());
+        when(apiClient.uploadDocument(any(Path.class))).thenReturn(response1).thenReturn(response2);
+
+        UploadCommand command = new UploadCommand() {
+            @Override
+            ApiClient createApiClient() {
+                return apiClient;
+            }
+        };
+
+        CommandLine cmd = new CommandLine(command);
+        cmd.setOut(new PrintWriter(new PrintStream(outputStream)));
+        cmd.setErr(new PrintWriter(new PrintStream(errorStream)));
+
+        // When
+        int exitCode = cmd.execute(tempDir.toString(), "--format", "text");
+
+        // Then
+        assertThat(exitCode).isEqualTo(0);
+        String out = outputStream.toString();
+        assertThat(out).contains("2 file(s) uploaded");
+        assertThat(out).contains("doc1.pdf");
+        assertThat(out).contains("doc2.txt");
+        assertThat(out).contains(id1.toString());
+        assertThat(out).contains(id2.toString());
+        verify(apiClient, times(2)).uploadDocument(any(Path.class));
     }
 }

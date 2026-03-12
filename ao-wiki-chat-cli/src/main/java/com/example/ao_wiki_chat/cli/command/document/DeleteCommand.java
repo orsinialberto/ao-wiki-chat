@@ -74,8 +74,10 @@ public class DeleteCommand implements Runnable {
             // Confirm deletion unless --confirm is used
             if (!skipConfirmation) {
                 System.out.print("Are you sure you want to delete document " + id + "? (yes/no): ");
-                Scanner scanner = new Scanner(System.in);
-                String confirmation = scanner.nextLine().trim().toLowerCase();
+                String confirmation;
+                try (Scanner scanner = new Scanner(System.in)) {
+                    confirmation = scanner.nextLine().trim().toLowerCase();
+                }
 
                 if (!"yes".equals(confirmation) && !"y".equals(confirmation)) {
                     colorPrinter.warning("Deletion cancelled.");

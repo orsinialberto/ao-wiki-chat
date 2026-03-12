@@ -30,9 +30,7 @@ public class GeminiEmbeddingService implements EmbeddingService {
     
     private static final Logger log = LoggerFactory.getLogger(GeminiEmbeddingService.class);
     private static final long MAX_RETRY_DELAY_MS = 90_000L;
-    private static final Pattern RETRY_DELAY_PATTERN = Pattern.compile(
-            "Please retry in ([\\d.]+)s"
-    );
+    private static final Pattern RETRY_DELAY_PATTERN = Pattern.compile("Please retry in ([\\d.]+)s");
     
     private final EmbeddingModel embeddingModel;
     private final int embeddingDimension;
@@ -65,9 +63,6 @@ public class GeminiEmbeddingService implements EmbeddingService {
         this.batchDelayMs = batchDelayMs;
         this.maxRetries = maxRetries;
         this.retryBaseDelayMs = retryBaseDelayMs;
-        log.info("GeminiEmbeddingService initialized - dimension: {}, batchSize: {}, "
-                + "batchDelayMs: {}, maxRetries: {}, retryBaseDelayMs: {}",
-                embeddingDimension, batchSize, batchDelayMs, maxRetries, retryBaseDelayMs);
     }
     
     /**
@@ -149,8 +144,7 @@ public class GeminiEmbeddingService implements EmbeddingService {
                 List<String> batch = texts.subList(i, endIndex);
                 
                 if (i > 0 && batchDelayMs > 0) {
-                    log.debug("Rate limit delay: waiting {}ms before batch {}/{}",
-                            batchDelayMs, currentBatch, totalBatches);
+                    log.debug("Rate limit delay: waiting {}ms before batch {}/{}", batchDelayMs, currentBatch, totalBatches);
                     sleep(batchDelayMs);
                 }
                 
@@ -159,8 +153,7 @@ public class GeminiEmbeddingService implements EmbeddingService {
                         .collect(Collectors.toList());
                 
                 long startTime = System.currentTimeMillis();
-                Response<List<Embedding>> response = embedBatchWithRetry(
-                        segments, i, endIndex);
+                Response<List<Embedding>> response = embedBatchWithRetry(segments, i, endIndex);
                 long duration = System.currentTimeMillis() - startTime;
                 
                 if (response.content() == null || response.content().isEmpty()) {
@@ -173,8 +166,7 @@ public class GeminiEmbeddingService implements EmbeddingService {
                 
                 allEmbeddings.addAll(batchEmbeddings);
                 
-                log.debug("Batch {}/{} processed in {}ms ({} embeddings)",
-                        currentBatch, totalBatches, duration, batchEmbeddings.size());
+                log.debug("Batch {}/{} processed in {}ms ({} embeddings)", currentBatch, totalBatches, duration, batchEmbeddings.size());
             }
             
             if (allEmbeddings.size() != texts.size()) {
@@ -199,23 +191,26 @@ public class GeminiEmbeddingService implements EmbeddingService {
      * On 429 (rate limit) errors, parses the suggested retry delay from the response
      * when available; otherwise falls back to exponential backoff.
      */
-    private Response<List<Embedding>> embedBatchWithRetry(
-            List<TextSegment> segments, int batchStart, int batchEnd) {
+    private Response<List<Embedding>> embedBatchWithRetry(List<TextSegment> segments, int batchStart, int batchEnd) {
         
         for (int attempt = 1; ; attempt++) {
             try {
                 return embeddingModel.embedAll(segments);
             } catch (Exception e) {
                 if (attempt >= maxRetries) {
-                    log.error("Batch {}-{} failed after {} attempts: {}",
-                            batchStart + 1, batchEnd, maxRetries, e.getMessage());
+                    log.error("Batch {}-{} failed after {} attempts: {}", batchStart + 1, batchEnd, maxRetries, e.getMessage());
                     throw e;
                 }
                 
                 long delay = calculateRetryDelay(e, attempt);
-                log.warn("Batch {}-{} failed (attempt {}/{}), retrying in {}ms: {}",
-                        batchStart + 1, batchEnd, attempt, maxRetries, delay,
-                        summarizeError(e));
+                log.warn(
+                    "Batch {}-{} failed (attempt {}/{}), retrying in {}ms: Rate limit (429), retrying after backoff",
+                    batchStart + 1, 
+                    batchEnd, 
+                    attempt, 
+                    maxRetries, 
+                    delay
+                );
                 
                 sleep(delay);
             }
@@ -259,15 +254,6 @@ public class GeminiEmbeddingService implements EmbeddingService {
         return -1;
     }
     
-    /**
-     * Extracts a short error summary for log messages (first line only).
-     */
-    private String summarizeError(Exception e) {
-        String msg = e.getMessage();
-        if (msg == null) return "unknown error";
-        int newline = msg.indexOf('\n');
-        return newline > 0 ? msg.substring(0, newline) : msg;
-    }
     
     /**
      * Sleeps for the specified duration. Package-private for test overriding.

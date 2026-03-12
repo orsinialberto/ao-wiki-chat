@@ -67,9 +67,11 @@ public class ChunkingService {
         
         if (!areValidParameters(chunkSize, overlap)) {
             throw new IllegalArgumentException(
-                String.format("Invalid parameters: chunkSize=%d, overlap=%d. " +
-                    "ChunkSize must be > 0, overlap must be >= 0 and < chunkSize", 
-                    chunkSize, overlap)
+                String.format(
+                    "Invalid parameters: chunkSize=%d, overlap=%d. ChunkSize must be > 0, overlap must be >= 0 and < chunkSize", 
+                    chunkSize, 
+                    overlap
+                )
             );
         }
         
@@ -85,8 +87,7 @@ public class ChunkingService {
             return List.of(normalizedText);
         }
         
-        log.debug("Chunking text: {} chars, target size: {}, overlap: {}", 
-                  normalizedText.length(), chunkSize, overlap);
+        log.debug("Chunking text: {} chars, target size: {}, overlap: {}", normalizedText.length(), chunkSize, overlap);
         
         // Step 1: Split on semantic boundaries (paragraphs)
         List<String> semanticChunks = splitOnSemanticBoundaries(normalizedText, chunkSize);
@@ -97,10 +98,12 @@ public class ChunkingService {
         // Step 3: Filter out chunks that are too small
         List<String> finalChunks = filterSmallChunks(overlappedChunks);
         
-        log.info("Chunking complete: {} chars → {} chunks (avg: {} chars)", 
+        log.info(
+            "Chunking complete: {} chars → {} chunks (avg: {} chars)", 
                  normalizedText.length(), 
                  finalChunks.size(),
-                 finalChunks.isEmpty() ? 0 : normalizedText.length() / finalChunks.size());
+                 finalChunks.isEmpty() ? 0 : normalizedText.length() / finalChunks.size()
+        );
         
         return finalChunks;
     }
@@ -338,8 +341,7 @@ public class ChunkingService {
                 .toList();
         
         if (filtered.size() < chunks.size()) {
-            log.debug("Filtered out {} small chunks (< {} chars)", 
-                     chunks.size() - filtered.size(), MIN_CHUNK_SIZE);
+            log.debug("Filtered out {} small chunks (< {} chars)", chunks.size() - filtered.size(), MIN_CHUNK_SIZE);
         }
         
         return filtered;

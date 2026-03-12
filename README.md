@@ -74,7 +74,7 @@ WikiChat includes a powerful CLI for interacting with the system from the comman
 
 # Install wrapper script (Unix/macOS)
 chmod +x scripts/wikichat
-export PATH="$PATH:$(pwd)/scripts"s
+export PATH="$PATH:$(pwd)/scripts"
 ```
 
 ### Basic Usage
@@ -86,8 +86,12 @@ wikichat config set api.url http://localhost:8080
 # Check system health
 wikichat health
 
-# Upload a document
+# Upload a document (or wait for processing to complete)
 wikichat upload document.md --wait
+
+# Upload all supported files from a folder (recursive, async; lists uploaded files at the end)
+wikichat upload ./my-docs
+wikichat upload ./my-docs --format json
 
 # Query the system
 wikichat query "What is the main topic?"
@@ -101,7 +105,7 @@ wikichat list --format plain
 
 ### Available Commands
 
-- **Document Management**: `upload`, `list`, `show`, `delete`, `chunks`
+- **Document Management**: `upload` (file or folder), `list`, `show`, `delete`, `chunks`
 - **Chat**: `query`, `interactive`, `history`, `clear`
 - **System**: `health`, `config`
 

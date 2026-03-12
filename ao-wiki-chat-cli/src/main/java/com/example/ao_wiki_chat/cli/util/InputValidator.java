@@ -90,6 +90,49 @@ public final class InputValidator {
     }
 
     /**
+     * Validates a path that can be either a file or a directory.
+     * For files: must exist, be a regular file, and be readable.
+     * For directories: must exist, be a directory, and be readable.
+     *
+     * @param pathString the path string to validate
+     * @return the validated Path
+     * @throws CliException if the path is invalid, does not exist, or is not readable
+     */
+    public static Path validateFilePathOrDirectory(String pathString) {
+        if (pathString == null || pathString.isBlank()) {
+            throw new CliException("Path cannot be empty");
+        }
+
+        try {
+            Path path = Paths.get(pathString);
+
+            if (!Files.exists(path)) {
+                throw new CliException("Path not found: " + path);
+            }
+
+            if (Files.isRegularFile(path)) {
+                if (!Files.isReadable(path)) {
+                    throw new CliException("File is not readable: " + path + ". Check file permissions.");
+                }
+                return path;
+            }
+
+            if (Files.isDirectory(path)) {
+                if (!Files.isReadable(path)) {
+                    throw new CliException("Directory is not readable: " + path + ". Check permissions.");
+                }
+                return path;
+            }
+
+            throw new CliException("Path is neither a file nor a directory: " + path);
+        } catch (CliException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CliException("Invalid path: " + pathString, e);
+        }
+    }
+
+    /**
      * Validates a session ID format.
      * Session IDs must be 1-64 characters, alphanumeric with underscores and hyphens.
      *

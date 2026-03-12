@@ -13,22 +13,41 @@ import com.example.ao_wiki_chat.cli.util.InputValidator;
 import com.example.ao_wiki_chat.cli.util.ProgressBar;
 import picocli.CommandLine;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
+
+/**
+ * Result of a single file upload (success or failure).
+ */
+record UploadResult(Path path, CliDocumentUpload response, String error) {
+    static UploadResult success(Path path, CliDocumentUpload response) {
+        return new UploadResult(path, response, null);
+    }
+    static UploadResult failure(Path path, String error) {
+        return new UploadResult(path, null, error);
+    }
+    boolean isSuccess() { return response != null; }
+}
 
 /**
  * Command for uploading documents to the WikiChat backend.
- * Supports waiting for processing completion with timeout.
+ * Accepts a single file or a directory (recursively uploads all supported files).
+ * Supports waiting for processing completion with timeout (single file only).
  */
 @CommandLine.Command(
         name = "upload",
-        description = "Upload a document to the WikiChat backend"
+        description = "Upload a document or a folder of documents to the WikiChat backend"
 )
 public class UploadCommand implements Runnable {
 
     @CommandLine.Parameters(
             index = "0",
-            description = "Path to the file to upload"
+            description = "Path to the file or folder to upload"
     )
     String filePath;
 
@@ -116,46 +135,138 @@ public class UploadCommand implements Runnable {
         ConfigManager configManager = createConfigManager();
         CliConfig config = configManager.get();
         ColorPrinter colorPrinter = createColorPrinter(config.isOutputColors());
+        FileValidator fileValidator = createFileValidator(
+                config.getMaxFileSizeBytes(),
+                config.getSupportedFileTypes()
+        );
 
         try {
-            // Validate file path
-            Path path = InputValidator.validateFilePath(filePath);
-            
-            // Validate file properties
-            FileValidator fileValidator = createFileValidator(
-                    config.getMaxFileSizeBytes(),
-                    config.getSupportedFileTypes()
-            );
-            fileValidator.validate(path);
+            Path path = InputValidator.validateFilePathOrDirectory(filePath);
 
-            // Initialize API client
-            ApiClient apiClient = createApiClient();
-
-            // Upload document
-            colorPrinter.info("Uploading document: " + path.getFileName());
-            CliDocumentUpload uploadResponse = apiClient.uploadDocument(path);
-
-            if ("json".equalsIgnoreCase(format)) {
-                System.out.println(uploadResponse);
+            if (Files.isRegularFile(path)) {
+                runSingleFileUpload(path, fileValidator, config, colorPrinter);
             } else {
-                colorPrinter.success("Document uploaded successfully!");
-                colorPrinter.println("Document ID: " + uploadResponse.documentId());
-                colorPrinter.println("Status: " + uploadResponse.status());
-                colorPrinter.println("Filename: " + uploadResponse.filename());
+                runDirectoryUpload(path, fileValidator, colorPrinter);
             }
-
-            // Wait for processing if requested
-            if (wait) {
-                waitForProcessing(apiClient, uploadResponse.documentId(), timeoutSeconds, config.isOutputColors());
-            }
-
         } catch (CliException | IllegalArgumentException e) {
             colorPrinter.error("Error: " + e.getMessage());
             throw new CommandLine.ParameterException(spec.commandLine(), e.getMessage());
         } catch (ApiException e) {
             colorPrinter.error("API Error: " + e.getMessage());
             throw new CommandLine.ExecutionException(spec.commandLine(), e.getMessage(), e);
+        } catch (IOException e) {
+            colorPrinter.error("Error reading directory: " + e.getMessage());
+            throw new CommandLine.ExecutionException(spec.commandLine(), "Error reading directory: " + e.getMessage(), e);
         }
+    }
+
+    private void runSingleFileUpload(Path path, FileValidator fileValidator, CliConfig config, ColorPrinter colorPrinter) {
+        fileValidator.validate(path);
+        ApiClient apiClient = createApiClient();
+
+        colorPrinter.info("Uploading document: " + path.getFileName());
+        CliDocumentUpload uploadResponse = apiClient.uploadDocument(path);
+
+        if ("json".equalsIgnoreCase(format)) {
+            System.out.println(uploadResponse);
+        } else {
+            colorPrinter.success("Document uploaded successfully!");
+            colorPrinter.println("Document ID: " + uploadResponse.documentId());
+            colorPrinter.println("Status: " + uploadResponse.status());
+            colorPrinter.println("Filename: " + uploadResponse.filename());
+        }
+
+        if (wait) {
+            waitForProcessing(apiClient, uploadResponse.documentId(), timeoutSeconds, config.isOutputColors());
+        }
+    }
+
+    private void runDirectoryUpload(Path root, FileValidator fileValidator, ColorPrinter colorPrinter) throws IOException {
+        List<Path> files = collectFiles(root, fileValidator);
+        if (files.isEmpty()) {
+            colorPrinter.info("No supported files found in " + root);
+            return;
+        }
+
+        colorPrinter.info("Uploading " + files.size() + " file(s)...");
+        ApiClient apiClient = createApiClient();
+        List<UploadResult> results = new ArrayList<>();
+
+        for (Path file : files) {
+            try {
+                CliDocumentUpload response = apiClient.uploadDocument(file);
+                results.add(UploadResult.success(file, response));
+            } catch (ApiException e) {
+                results.add(UploadResult.failure(file, e.getMessage()));
+            }
+        }
+
+        printUploadSummary(results, root, colorPrinter);
+    }
+
+    private List<Path> collectFiles(Path root, FileValidator fileValidator) throws IOException {
+        try (Stream<Path> walk = Files.walk(root)) {
+            return walk
+                    .filter(Files::isRegularFile)
+                    .filter(p -> {
+                        try {
+                            fileValidator.validate(p);
+                            return true;
+                        } catch (IllegalArgumentException e) {
+                            return false;
+                        }
+                    })
+                    .toList();
+        }
+    }
+
+    private void printUploadSummary(List<UploadResult> results, Path root, ColorPrinter colorPrinter) {
+        List<UploadResult> succeeded = results.stream().filter(UploadResult::isSuccess).toList();
+        List<UploadResult> failed = results.stream().filter(r -> !r.isSuccess()).toList();
+
+        if ("json".equalsIgnoreCase(format)) {
+            printUploadSummaryJson(succeeded, failed, root);
+        } else {
+            colorPrinter.success("Upload complete. " + succeeded.size() + " file(s) uploaded.");
+            colorPrinter.println("Uploaded files:");
+            for (UploadResult r : succeeded) {
+                Path rel = root.relativize(r.path());
+                colorPrinter.println("  - " + rel + " (ID: " + r.response().documentId() + ", " + r.response().filename() + ")");
+            }
+            if (!failed.isEmpty()) {
+                colorPrinter.error("Failed (" + failed.size() + "):");
+                for (UploadResult r : failed) {
+                    colorPrinter.println("  - " + root.relativize(r.path()) + ": " + r.error());
+                }
+            }
+        }
+    }
+
+    private void printUploadSummaryJson(List<UploadResult> succeeded, List<UploadResult> failed, Path root) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"uploaded\":[");
+        for (int i = 0; i < succeeded.size(); i++) {
+            UploadResult r = succeeded.get(i);
+            if (i > 0) sb.append(",");
+            sb.append("{\"path\":\"").append(escapeJson(root.relativize(r.path()).toString())).append("\"");
+            sb.append(",\"documentId\":\"").append(r.response().documentId()).append("\"");
+            sb.append(",\"filename\":\"").append(escapeJson(r.response().filename())).append("\"");
+            sb.append(",\"status\":\"").append(escapeJson(r.response().status())).append("\"}");
+        }
+        sb.append("],\"failed\":[");
+        for (int i = 0; i < failed.size(); i++) {
+            UploadResult r = failed.get(i);
+            if (i > 0) sb.append(",");
+            sb.append("{\"path\":\"").append(escapeJson(root.relativize(r.path()).toString())).append("\"");
+            sb.append(",\"error\":\"").append(escapeJson(r.error())).append("\"}");
+        }
+        sb.append("]}");
+        System.out.println(sb);
+    }
+
+    private static String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
     }
 
     /**

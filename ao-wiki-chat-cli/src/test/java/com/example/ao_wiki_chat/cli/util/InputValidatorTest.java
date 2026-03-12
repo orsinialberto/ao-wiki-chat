@@ -75,6 +75,41 @@ class InputValidatorTest {
     }
 
     @Test
+    void validateFilePathOrDirectoryWhenFileExistsReturnsPath(@TempDir Path tempDir) throws Exception {
+        Path testFile = tempDir.resolve("test.txt");
+        Files.writeString(testFile, "content");
+        Path result = InputValidator.validateFilePathOrDirectory(testFile.toString());
+        assertThat(result).isEqualTo(testFile);
+    }
+
+    @Test
+    void validateFilePathOrDirectoryWhenDirectoryExistsReturnsPath(@TempDir Path tempDir) {
+        Path result = InputValidator.validateFilePathOrDirectory(tempDir.toString());
+        assertThat(result).isEqualTo(tempDir);
+    }
+
+    @Test
+    void validateFilePathOrDirectoryWhenPathDoesNotExistThrowsCliException() {
+        assertThatThrownBy(() -> InputValidator.validateFilePathOrDirectory("/nonexistent/path"))
+                .isInstanceOf(CliException.class)
+                .hasMessageContaining("Path not found");
+    }
+
+    @Test
+    void validateFilePathOrDirectoryWhenNullThrowsCliException() {
+        assertThatThrownBy(() -> InputValidator.validateFilePathOrDirectory(null))
+                .isInstanceOf(CliException.class)
+                .hasMessageContaining("Path cannot be empty");
+    }
+
+    @Test
+    void validateFilePathOrDirectoryWhenBlankThrowsCliException() {
+        assertThatThrownBy(() -> InputValidator.validateFilePathOrDirectory("   "))
+                .isInstanceOf(CliException.class)
+                .hasMessageContaining("Path cannot be empty");
+    }
+
+    @Test
     void validateSessionIdWhenValidSessionIdDoesNotThrow() {
         InputValidator.validateSessionId("session-123");
         InputValidator.validateSessionId("session_123");
