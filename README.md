@@ -19,6 +19,41 @@ RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD,
 - Docker and Docker Compose installed
 - Java 25 installed
 - Maven installed
+- **Ollama** (optional): required if you use local embeddings; see [Ollama setup](#ollama-local-embeddings) below.
+
+### Ollama (local embeddings)
+
+To use **local embeddings** instead of Gemini, you need Ollama running and the embedding model installed.
+
+**1. Install Ollama**
+
+- **macOS / Linux**: install from [ollama.com](https://ollama.com) or via shell:
+  ```bash
+  curl -fsSL https://ollama.com/install.sh | sh
+  ```
+
+**2. Start Ollama and pull the embedding model**
+
+Ollama runs as a service (often started automatically after install). The project expects the **nomic-embed-text** model for embeddings:
+
+```bash
+# Pull the embedding model (used when app.embedding.provider=ollama)
+ollama pull nomic-embed-text
+```
+
+**3. Configure the backend**
+
+In `ao-wiki-chat-backend/src/main/resources/application.yml` set:
+
+```yaml
+app:
+  embedding:
+    provider: ollama
+```
+
+Optional: adjust `ollama.base-url` if Ollama is not on `http://localhost:11434`.
+
+Without Ollama (and with `provider: gemini`), the backend uses the Google Gemini API for embeddings; set `GEMINI_API_KEY` in that case.
 
 ### 1. Database Startup
 
@@ -41,7 +76,7 @@ export GEMINI_API_KEY=your_api_key_here
 ```
 
 
-### 3. Download Dependences
+### 3. Download dependencies
 ```bash
 ./mvnw clean install
 ```

@@ -268,8 +268,8 @@ class DocumentServiceTest {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
         List<float[]> embeddings = Arrays.asList(
-                new float[768], // Mock embeddings with correct dimension
-                new float[768]
+                new float[1024], // Mock embeddings with correct dimension
+                new float[1024]
         );
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -283,13 +283,13 @@ class DocumentServiceTest {
                         .document(document)
                         .content("Chunk 1")
                         .chunkIndex(0)
-                        .embedding(new float[768])
+                        .embedding(new float[1024])
                         .build(),
                 Chunk.builder()
                         .document(document)
                         .content("Chunk 2")
                         .chunkIndex(1)
-                        .embedding(new float[768])
+                        .embedding(new float[1024])
                         .build()
         );
         when(chunkRepository.saveAll(any(List.class))).thenReturn(savedChunks);
@@ -362,7 +362,7 @@ class DocumentServiceTest {
     void processDocumentWhenEmbeddingCountMismatchThrowsException() throws IOException {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
-        float[] singleEmbedding = new float[768];
+        float[] singleEmbedding = new float[1024];
         List<float[]> embeddings = Arrays.asList(singleEmbedding); // Only 1 embedding
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -487,8 +487,8 @@ class DocumentServiceTest {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
         List<float[]> embeddings = Arrays.asList(
-                new float[768],
-                new float[768]
+                new float[1024],
+                new float[1024]
         );
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -608,7 +608,7 @@ class DocumentServiceTest {
     void deleteFileFromStorageWhenIOExceptionOccursLogsWarningAndDoesNotFail() throws IOException {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1");
-        List<float[]> embeddings = Arrays.asList(new float[768]);
+        List<float[]> embeddings = Arrays.asList(new float[1024]);
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
         when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
@@ -890,5 +890,37 @@ class DocumentServiceTest {
         verify(documentRepository).findById(documentId);
         verify(chunkRepository).deleteByDocument_Id(documentId);
         verify(documentRepository).delete(document);
+    }
+
+    @Test
+    void deleteAllDocumentsWhenNoDocumentsReturnsZero() {
+        when(documentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        int deleted = documentService.deleteAllDocuments();
+
+        assertThat(deleted).isEqualTo(0);
+        verify(documentRepository).findAllByOrderByCreatedAtDesc();
+        verify(chunkRepository, never()).deleteByDocument_Id(any(UUID.class));
+        verify(documentRepository, never()).delete(any(Document.class));
+    }
+
+    @Test
+    void deleteAllDocumentsWhenDocumentsExistDeletesAll() {
+        Document doc2 = Document.builder()
+                .id(UUID.randomUUID())
+                .filename("other.pdf")
+                .contentType("application/pdf")
+                .fileSize(2000L)
+                .status(DocumentStatus.COMPLETED)
+                .build();
+        when(documentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(document, doc2));
+
+        int deleted = documentService.deleteAllDocuments();
+
+        assertThat(deleted).isEqualTo(2);
+        verify(chunkRepository).deleteByDocument_Id(document.getId());
+        verify(chunkRepository).deleteByDocument_Id(doc2.getId());
+        verify(documentRepository).delete(document);
+        verify(documentRepository).delete(doc2);
     }
 }

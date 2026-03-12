@@ -115,6 +115,18 @@ public class DocumentController {
     }
 
     /**
+     * Deletes all documents and their chunks and files from storage.
+     *
+     * @return 200 OK with count of deleted documents in response body
+     */
+    @DeleteMapping("/all")
+    public ResponseEntity<Map<String, Integer>> deleteAllDocuments() {
+        log.info("Deleting all documents");
+        int deleted = documentService.deleteAllDocuments();
+        return ResponseEntity.ok(Map.of("deleted", deleted));
+    }
+
+    /**
      * Deletes a document and all associated chunks.
      *
      * @param id the document ID

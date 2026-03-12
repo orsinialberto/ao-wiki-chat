@@ -100,9 +100,9 @@ class ChunkEmbeddingIntegrationTest {
     @Test
     @Transactional
     void saveChunkWithEmbeddingWhenValidDataPersistsCorrectly() {
-        // Given: Create a chunk with embedding (768 dimensions like Gemini gemini-embedding-001)
-        float[] embedding = new float[768];
-        for (int i = 0; i < 768; i++) {
+        // Given: Create a chunk with embedding (1024 dimensions, e.g. Gemini or Ollama padded)
+        float[] embedding = new float[1024];
+        for (int i = 0; i < 1024; i++) {
             embedding[i] = (float) (Math.random() * 2 - 1); // Random values between -1 and 1
         }
 
@@ -121,14 +121,14 @@ class ChunkEmbeddingIntegrationTest {
         // Then: Verify it was saved with ID
         assertThat(savedChunk.getId()).isNotNull();
         assertThat(savedChunk.getEmbedding()).isNotNull();
-        assertThat(savedChunk.getEmbedding()).hasSize(768);
+        assertThat(savedChunk.getEmbedding()).hasSize(1024);
 
         // Then: Retrieve from database and verify embedding is preserved
         Chunk retrievedChunk = chunkRepository.findById(savedChunk.getId())
             .orElseThrow(() -> new AssertionError("Chunk should exist in database"));
 
         assertThat(retrievedChunk.getEmbedding()).isNotNull();
-        assertThat(retrievedChunk.getEmbedding()).hasSize(768);
+        assertThat(retrievedChunk.getEmbedding()).hasSize(1024);
         assertThat(retrievedChunk.getEmbedding()).containsExactly(embedding);
         assertThat(retrievedChunk.getContent()).isEqualTo("Test chunk content for embedding verification");
         assertThat(retrievedChunk.getChunkIndex()).isEqualTo(0);
@@ -213,15 +213,15 @@ class ChunkEmbeddingIntegrationTest {
     @Test
     @Transactional
     void saveChunkWithEmbeddingWhenEmbeddingHasSpecificValuesPreservesPrecision() {
-        // Given: Create embedding with specific known values
-        float[] embedding = new float[768];
+        // Given: Create embedding with specific known values (1024 dimensions)
+        float[] embedding = new float[1024];
         embedding[0] = 1.0f;
         embedding[1] = -1.0f;
         embedding[2] = 0.5f;
         embedding[3] = -0.5f;
-        embedding[767] = 0.123456f;
+        embedding[1023] = 0.123456f;
         // Fill rest with zeros
-        for (int i = 4; i < 767; i++) {
+        for (int i = 4; i < 1023; i++) {
             embedding[i] = 0.0f;
         }
 
@@ -240,21 +240,21 @@ class ChunkEmbeddingIntegrationTest {
             .orElseThrow(() -> new AssertionError("Chunk should exist"));
 
         // Then: Verify precision is preserved
-        assertThat(retrievedChunk.getEmbedding()).hasSize(768);
+        assertThat(retrievedChunk.getEmbedding()).hasSize(1024);
         assertThat(retrievedChunk.getEmbedding()[0]).isEqualTo(1.0f);
         assertThat(retrievedChunk.getEmbedding()[1]).isEqualTo(-1.0f);
         assertThat(retrievedChunk.getEmbedding()[2]).isEqualTo(0.5f);
         assertThat(retrievedChunk.getEmbedding()[3]).isEqualTo(-0.5f);
-        assertThat(retrievedChunk.getEmbedding()[767]).isCloseTo(0.123456f, org.assertj.core.data.Offset.offset(0.000001f));
+        assertThat(retrievedChunk.getEmbedding()[1023]).isCloseTo(0.123456f, org.assertj.core.data.Offset.offset(0.000001f));
     }
 
     /**
-     * Creates a test embedding with a specific first value for testing.
+     * Creates a test embedding with a specific first value for testing (1024 dimensions).
      */
     private float[] createTestEmbedding(float firstValue) {
-        float[] embedding = new float[768];
+        float[] embedding = new float[1024];
         embedding[0] = firstValue;
-        for (int i = 1; i < 768; i++) {
+        for (int i = 1; i < 1024; i++) {
             embedding[i] = (float) (Math.random() * 2 - 1);
         }
         return embedding;

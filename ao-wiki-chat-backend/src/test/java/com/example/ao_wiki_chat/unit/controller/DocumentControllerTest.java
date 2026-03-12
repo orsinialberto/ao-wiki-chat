@@ -346,6 +346,17 @@ class DocumentControllerTest {
     }
 
     @Test
+    void deleteAllDocumentsReturnsOkWithDeletedCount() {
+        when(documentService.deleteAllDocuments()).thenReturn(3);
+
+        ResponseEntity<java.util.Map<String, Integer>> response = controller.deleteAllDocuments();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("deleted", 3);
+        verify(documentService).deleteAllDocuments();
+    }
+
+    @Test
     void getDocumentChunksWhenDocumentAndChunksExistReturnsOk() {
         // Given
         Chunk chunk1 = Chunk.builder()
@@ -353,7 +364,7 @@ class DocumentControllerTest {
                 .document(document)
                 .content("Chunk 1 content")
                 .chunkIndex(0)
-                .embedding(new float[768])
+                .embedding(new float[1024])
                 .createdAt(createdAt)
                 .build();
 
@@ -362,7 +373,7 @@ class DocumentControllerTest {
                 .document(document)
                 .content("Chunk 2 content")
                 .chunkIndex(1)
-                .embedding(new float[768])
+                .embedding(new float[1024])
                 .createdAt(createdAt.plusMinutes(1))
                 .build();
 

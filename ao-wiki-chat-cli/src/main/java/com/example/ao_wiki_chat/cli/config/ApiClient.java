@@ -185,6 +185,25 @@ public class ApiClient {
     }
 
     /**
+     * Deletes all documents and their chunks.
+     *
+     * @return number of documents deleted
+     * @throws ApiException if the request fails
+     */
+    public int deleteAllDocuments() {
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/documents/all")
+                .delete()
+                .build();
+
+        java.util.Map<String, Integer> body = executeRequest(
+                request,
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Integer>>() {}
+        );
+        return body != null && body.containsKey("deleted") ? body.get("deleted") : 0;
+    }
+
+    /**
      * Retrieves all chunks for a document.
      *
      * @param id the document ID

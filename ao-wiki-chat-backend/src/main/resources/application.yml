@@ -40,16 +40,22 @@ spring:
 server:
   port: 8080
 
+# Embedding provider: "gemini" | "ollama"
+app:
+  embedding:
+    provider: ollama
+
 gemini:
   api:
-    key: ${GEMINI_API_KEY}
+    # Optional: omit or set GEMINI_API_KEY for Gemini chat. If unset, app starts but chat will fail at first use.
+    key: ${GEMINI_API_KEY:}
   chat:
     model: gemini-2.5-flash-lite
     temperature: 0.5
     max-tokens: 2048
   embedding:
     model: gemini-embedding-001
-    dimension: 768
+    dimension: 1024
     batch-size: 25
     batch-delay-ms: 15000
     max-retries: 5
@@ -57,6 +63,12 @@ gemini:
   rate-limit:
     requests-per-minute: 10
     tokens-per-day: 2000000
+
+ollama:
+  base-url: http://localhost:11434
+  embedding:
+    model: nomic-embed-text
+    dimension: 1024
 
 upload:
   allowed-types: application/pdf,text/markdown,text/html,text/plain
@@ -70,7 +82,7 @@ rag:
     top-k: 6
     similarity-threshold: 0.5
   vector:
-    dimension: 768
+    dimension: 1024
     distance-metric: cosine
   conversation:
     max-history-messages: 5  # Maximum number of previous messages to include

@@ -26,7 +26,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * Entity representing a chunk of text from a document with its vector embedding.
- * Embeddings are stored as vector(768) in PostgreSQL using pgvector extension.
+ * Embeddings are stored as vector(1024) in PostgreSQL using pgvector extension.
  * Used for semantic similarity search in RAG pipeline.
  */
 @Entity
@@ -52,7 +52,7 @@ public class Chunk {
     private Integer chunkIndex;
 
     @JdbcType(VectorType.class)
-    @Column(columnDefinition = "vector(768)")
+    @Column(columnDefinition = "vector(1024)")
     private float[] embedding;
 
     @JdbcTypeCode(SqlTypes.JSON)

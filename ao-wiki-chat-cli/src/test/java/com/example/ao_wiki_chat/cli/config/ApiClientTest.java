@@ -218,6 +218,31 @@ class ApiClientTest {
     }
 
     @Test
+    void deleteAllDocumentsWhenSuccessfulReturnsCount() throws Exception {
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setBody("{\"deleted\": 5}"));
+
+        int deleted = apiClient.deleteAllDocuments();
+
+        assertThat(deleted).isEqualTo(5);
+        RecordedRequest request = mockWebServer.takeRequest();
+        assertThat(request.getMethod()).isEqualTo("DELETE");
+        assertThat(request.getPath()).isEqualTo("/api/documents/all");
+    }
+
+    @Test
+    void deleteAllDocumentsWhenNoneExistReturnsZero() throws Exception {
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setBody("{\"deleted\": 0}"));
+
+        int deleted = apiClient.deleteAllDocuments();
+
+        assertThat(deleted).isEqualTo(0);
+    }
+
+    @Test
     void getDocumentChunksWhenSuccessfulReturnsChunkList() throws Exception {
         // Given
         UUID documentId = UUID.randomUUID();

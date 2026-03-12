@@ -114,4 +114,66 @@ class DeleteCommandTest {
         assertThat(exitCode).isNotEqualTo(0);
         assertThat(errorStream.toString()).contains("API Error");
     }
+
+    @Test
+    void runWhenAllOptionWithConfirmDeletesAllDocuments() {
+        when(apiClient.deleteAllDocuments()).thenReturn(3);
+
+        DeleteCommand command = new DeleteCommand() {
+            @Override
+            ApiClient createApiClient() {
+                return apiClient;
+            }
+        };
+
+        CommandLine cmd = new CommandLine(command);
+
+        int exitCode = cmd.execute("--all", "--confirm");
+
+        assertThat(exitCode).isEqualTo(0);
+        assertThat(outputStream.toString()).contains("Deleted 3 document(s)");
+        verify(apiClient, times(1)).deleteAllDocuments();
+        verify(apiClient, never()).deleteDocument(any());
+    }
+
+    @Test
+    void runWhenAllOptionWithNoDocumentsDeletedShowsZero() {
+        when(apiClient.deleteAllDocuments()).thenReturn(0);
+
+        DeleteCommand command = new DeleteCommand() {
+            @Override
+            ApiClient createApiClient() {
+                return apiClient;
+            }
+        };
+
+        CommandLine cmd = new CommandLine(command);
+
+        int exitCode = cmd.execute("--all", "--confirm");
+
+        assertThat(exitCode).isEqualTo(0);
+        assertThat(outputStream.toString()).contains("Deleted 0 document(s)");
+        verify(apiClient, times(1)).deleteAllDocuments();
+    }
+
+    @Test
+    void runWhenAllAndDocumentIdBothProvidedExitsWithError() {
+        DeleteCommand command = new DeleteCommand() {
+            @Override
+            ApiClient createApiClient() {
+                return apiClient;
+            }
+        };
+
+        CommandLine cmd = new CommandLine(command);
+        cmd.setOut(new PrintWriter(new PrintStream(outputStream)));
+        cmd.setErr(new PrintWriter(new PrintStream(errorStream)));
+
+        int exitCode = cmd.execute(UUID.randomUUID().toString(), "--all", "--confirm");
+
+        assertThat(exitCode).isNotEqualTo(0);
+        assertThat(errorStream.toString()).contains("Do not specify a document ID when using --all");
+        verify(apiClient, never()).deleteAllDocuments();
+        verify(apiClient, never()).deleteDocument(any());
+    }
 }

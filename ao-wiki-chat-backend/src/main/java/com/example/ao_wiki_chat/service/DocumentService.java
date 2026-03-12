@@ -415,8 +415,29 @@ public class DocumentService {
         
         chunkRepository.deleteByDocument_Id(documentId);
         documentRepository.delete(document);
+        deleteFileFromStorage(documentId);
         
         log.info("Document and associated chunks deleted: {}", documentId);
+    }
+
+    /**
+     * Deletes all documents and their chunks and files from storage.
+     *
+     * @return the number of documents deleted
+     */
+    @Transactional
+    public int deleteAllDocuments() {
+        List<Document> documents = documentRepository.findAllByOrderByCreatedAtDesc();
+        int count = documents.size();
+        log.info("Deleting all documents: {} total", count);
+        for (Document document : documents) {
+            UUID id = document.getId();
+            chunkRepository.deleteByDocument_Id(id);
+            documentRepository.delete(document);
+            deleteFileFromStorage(id);
+        }
+        log.info("All documents deleted: {}", count);
+        return count;
     }
 }
 

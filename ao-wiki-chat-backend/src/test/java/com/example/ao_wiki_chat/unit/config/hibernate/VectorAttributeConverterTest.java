@@ -84,10 +84,10 @@ class VectorAttributeConverterTest {
     }
 
     @Test
-    void convertToDatabaseColumnWhen768DimensionsReturnsCorrectString() {
-        // Given: Simulate Gemini gemini-embedding-001 dimensions (768 via Matryoshka scaling)
-        float[] embedding = new float[768];
-        for (int i = 0; i < 768; i++) {
+    void convertToDatabaseColumnWhen1024DimensionsReturnsCorrectString() {
+        // Given: Simulate embedding dimensions (e.g. Gemini 1024 or Ollama padded to 1024)
+        float[] embedding = new float[1024];
+        for (int i = 0; i < 1024; i++) {
             embedding[i] = i * 0.1f;
         }
 
@@ -98,8 +98,8 @@ class VectorAttributeConverterTest {
         assertThat(result)
             .startsWith("[0.0,0.1,0.2")
             .endsWith("]")
-            .contains("76.6")
-            .contains("76.7"); // Check values are present (float precision may vary)
+            .contains("102.3")
+            .contains("102.2"); // Check values are present (float precision may vary)
     }
 
     // ========== convertToEntityAttribute Tests ==========
@@ -197,10 +197,10 @@ class VectorAttributeConverterTest {
     }
 
     @Test
-    void convertToEntityAttributeWhen768DimensionsReturnsCorrectArray() {
-        // Given: Build a 768-dimensional vector string
+    void convertToEntityAttributeWhen1024DimensionsReturnsCorrectArray() {
+        // Given: Build a 1024-dimensional vector string
         StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < 768; i++) {
+        for (int i = 0; i < 1024; i++) {
             if (i > 0) sb.append(",");
             sb.append(i * 0.1f);
         }
@@ -211,9 +211,9 @@ class VectorAttributeConverterTest {
         float[] result = converter.convertToEntityAttribute(dbData);
 
         // Then
-        assertThat(result).hasSize(768);
+        assertThat(result).hasSize(1024);
         assertThat(result[0]).isEqualTo(0.0f);
-        assertThat(result[767]).isCloseTo(76.7f, within(0.001f)); // Float precision tolerance
+        assertThat(result[1023]).isCloseTo(102.3f, within(0.001f)); // Float precision tolerance
     }
 
     // ========== Error Handling Tests ==========
@@ -257,9 +257,9 @@ class VectorAttributeConverterTest {
 
     @Test
     void roundTripConversionWithLargeDimensionsPreservesData() {
-        // Given: 768-dimensional vector
-        float[] original = new float[768];
-        for (int i = 0; i < 768; i++) {
+        // Given: 1024-dimensional vector
+        float[] original = new float[1024];
+        for (int i = 0; i < 1024; i++) {
             original[i] = (float) Math.random();
         }
 

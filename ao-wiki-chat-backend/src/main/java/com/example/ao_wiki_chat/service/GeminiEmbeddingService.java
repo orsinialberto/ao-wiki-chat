@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import com.example.ao_wiki_chat.exception.EmbeddingException;
@@ -25,7 +26,8 @@ import dev.langchain4j.model.output.Response;
  * Supports batch processing with configurable batch size to optimize API usage
  * and respect rate limits. Includes retry with exponential backoff for 429 errors.
  */
-@Service
+@Service("geminiEmbeddingService")
+@ConditionalOnProperty(name = "app.embedding.provider", havingValue = "gemini")
 public class GeminiEmbeddingService implements EmbeddingService {
     
     private static final Logger log = LoggerFactory.getLogger(GeminiEmbeddingService.class);
