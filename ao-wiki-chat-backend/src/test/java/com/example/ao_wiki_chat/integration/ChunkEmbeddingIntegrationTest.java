@@ -47,7 +47,8 @@ import com.example.ao_wiki_chat.repository.DocumentRepository;
     "spring.datasource.password=wikichat_password",
     "spring.jpa.hibernate.ddl-auto=validate",
     "spring.jpa.show-sql=false",
-    "gemini.api.key=test-api-key-for-integration-test"
+    "gemini.api.key=test-api-key-for-integration-test",
+    "app.chat.provider=gemini"
 })
 class ChunkEmbeddingIntegrationTest {
 

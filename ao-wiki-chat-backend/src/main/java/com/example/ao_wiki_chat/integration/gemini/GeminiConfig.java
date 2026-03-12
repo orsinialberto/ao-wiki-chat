@@ -46,15 +46,16 @@ public class GeminiConfig {
     
     /**
      * Creates a ChatLanguageModel bean for Gemini chat completions.
-     * This bean is used by LLMService implementations to generate text responses.
+     * Active only when {@code app.chat.provider=gemini}.
      *
      * @return configured GoogleAiGeminiChatModel instance
      */
     @Bean("geminiChatModel")
+    @ConditionalOnProperty(name = "app.chat.provider", havingValue = "gemini")
     public ChatLanguageModel geminiChatModel() {
-        log.info("Initializing Gemini Chat Model: {} with temperature: {}, max tokens: {}", 
+        log.info("Initializing Gemini Chat Model: {} with temperature: {}, max tokens: {}",
                 chatModel, temperature, maxTokens);
-        
+
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(chatModel)
@@ -64,14 +65,16 @@ public class GeminiConfig {
                 .logRequestsAndResponses(false)
                 .build();
     }
-    
+
     /**
      * Creates a StreamingChatLanguageModel bean for Gemini streaming chat completions.
-     * Used by the ao-chat compatibility layer to stream responses via SSE.
+     * Registered as "chatStreamingModel" so RAGService can inject the active provider.
+     * Active only when {@code app.chat.provider=gemini}.
      *
      * @return configured GoogleAiGeminiStreamingChatModel instance
      */
-    @Bean("geminiStreamingChatModel")
+    @Bean("chatStreamingModel")
+    @ConditionalOnProperty(name = "app.chat.provider", havingValue = "gemini")
     public StreamingChatLanguageModel geminiStreamingChatModel() {
         log.info("Initializing Gemini Streaming Chat Model: {} with temperature: {}, max tokens: {}",
                 chatModel, temperature, maxTokens);

@@ -999,8 +999,12 @@ class RAGServiceTest {
         // Verify document context is present
         assertThat(prompt).contains("Context from documents:");
         assertThat(prompt).contains(testChunk1.getContent());
+
+        // Verify exhaustive-answer instruction is present
+        assertThat(prompt).contains("exhaustive");
+        assertThat(prompt).contains("Be thorough and exhaustive");
     }
-    
+
     /**
      * Creates a test vector with specified dimension and fill value.
      */

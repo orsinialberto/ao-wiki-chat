@@ -164,7 +164,8 @@ public class ChatStreamController {
                 // onError
                 error -> {
                     log.error("Streaming RAG error: {}", error.getMessage(), error);
-                    writeSseError(writer, error.getMessage());
+                    String userMessage = toUserFriendlyStreamingErrorMessage(error);
+                    writeSseError(writer, userMessage);
                 }
         );
     }
@@ -358,9 +359,40 @@ public class ChatStreamController {
         );
     }
 
+    /**
+     * Turns streaming failures into a message suitable for the client.
+     * When Ollama returns an error (e.g. model not found) the LangChain4j client can throw
+     * an NPE because response.body() is null; we detect that and suggest checking Ollama/model.
+     */
+    private String toUserFriendlyStreamingErrorMessage(Throwable error) {
+        if (error == null) {
+            return "Unknown streaming error";
+        }
+        String ollamaHint = "Ensure Ollama is running and the chat model is installed (e.g. ollama pull llama3.2).";
+        Throwable t = error;
+        while (t != null) {
+            if (t instanceof NullPointerException) {
+                String msg = t.getMessage();
+                if (msg != null && msg.contains("retrofit2.Response.body()")) {
+                    return "Ollama returned an empty or error response. " + ollamaHint;
+                }
+                // NPE with null message but from Ollama client (stack trace)
+                for (StackTraceElement frame : t.getStackTrace()) {
+                    if (frame.getClassName().contains("OllamaClient")) {
+                        return "Ollama returned an empty or error response. " + ollamaHint;
+                    }
+                }
+            }
+            t = t.getCause();
+        }
+        String msg = error.getMessage();
+        return (msg != null && !msg.isBlank()) ? msg : "Streaming error: " + error.getClass().getSimpleName();
+    }
+
     private void writeSseError(PrintWriter writer, String errorMessage) {
         try (writer) {
-            String json = objectMapper.writeValueAsString(Map.of("type", "error", "error", errorMessage));
+            String safe = (errorMessage != null && !errorMessage.isBlank()) ? errorMessage : "Unknown error";
+            String json = objectMapper.writeValueAsString(Map.of("type", "error", "error", safe));
             writer.write("data: " + json + "\n\n");
             writer.flush();
         } catch (Exception e) {

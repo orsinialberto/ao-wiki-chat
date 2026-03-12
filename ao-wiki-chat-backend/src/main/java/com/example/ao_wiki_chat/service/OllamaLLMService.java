@@ -11,70 +11,63 @@ import com.example.ao_wiki_chat.exception.LLMException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
 /**
- * Gemini-specific implementation of LLMService.
- * Active only when {@code app.chat.provider=gemini}.
+ * Ollama-specific implementation of LLMService.
+ * Active only when {@code app.chat.provider=ollama}.
  */
 @Service
-@ConditionalOnProperty(name = "app.chat.provider", havingValue = "gemini")
-public class GeminiLLMService implements LLMService {
-    
-    private static final Logger log = LoggerFactory.getLogger(GeminiLLMService.class);
-    
+@ConditionalOnProperty(name = "app.chat.provider", havingValue = "ollama")
+public class OllamaLLMService implements LLMService {
+
+    private static final Logger log = LoggerFactory.getLogger(OllamaLLMService.class);
+
     private final ChatLanguageModel chatModel;
-    
-    /**
-     * Constructs a GeminiLLMService with the specified chat model.
-     * Temperature is configured in the chat model bean (gemini.chat.temperature in application.yml).
-     *
-     * @param chatModel the configured Gemini chat model bean
-     */
-    public GeminiLLMService(@Qualifier("geminiChatModel") ChatLanguageModel chatModel) {
+
+    public OllamaLLMService(@Qualifier("ollamaChatModel") ChatLanguageModel chatModel) {
         this.chatModel = chatModel;
-        log.info("GeminiLLMService initialized");
+        log.info("OllamaLLMService initialized");
     }
-    
+
     @Override
     public String generate(String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new LLMException("Prompt cannot be null or empty");
         }
-        
+
         log.debug("Generating response for prompt of length: {}", prompt.length());
-        
+
         try {
             long startTime = System.currentTimeMillis();
             String response = chatModel.generate(prompt);
             long duration = System.currentTimeMillis() - startTime;
-            
+
             if (response == null || response.isEmpty()) {
-                log.warn("Received empty response from Gemini");
-                throw new LLMException("Received empty response from Gemini API");
+                log.warn("Received empty response from Ollama");
+                throw new LLMException("Received empty response from Ollama");
             }
-            
+
             log.debug("Response generated in {}ms, length: {} characters", duration, response.length());
-            
+
             return response;
-            
+
         } catch (LLMException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to generate response from Gemini: {}", e.getMessage(), e);
-            throw new LLMException("Failed to generate text with Gemini: " + e.getMessage(), e);
+            log.error("Failed to generate response from Ollama: {}", e.getMessage(), e);
+            throw new LLMException("Failed to generate text with Ollama: " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public boolean isHealthy() {
         try {
-            log.debug("Performing health check on Gemini chat model");
+            log.debug("Performing health check on Ollama chat model");
             String testResponse = chatModel.generate("ping");
             boolean healthy = testResponse != null && !testResponse.isEmpty();
-            log.debug("Gemini health check result: {}", healthy);
+            log.debug("Ollama health check result: {}", healthy);
             return healthy;
         } catch (Exception e) {
-            log.warn("Gemini health check failed: {}", e.getMessage());
+            log.warn("Ollama health check failed: {}", e.getMessage());
             return false;
         }
     }
 }
-

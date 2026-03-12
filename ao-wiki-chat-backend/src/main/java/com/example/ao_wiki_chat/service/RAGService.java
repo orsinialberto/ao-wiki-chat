@@ -63,7 +63,7 @@ public class RAGService {
             EmbeddingService embeddingService,
             VectorSearchService vectorSearchService,
             LLMService llmService,
-            @Qualifier("geminiStreamingChatModel") StreamingChatLanguageModel streamingChatModel,
+            @Qualifier("chatStreamingModel") StreamingChatLanguageModel streamingChatModel,
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
             @Value("${rag.conversation.max-history-messages:10}") int maxHistoryMessages,
@@ -304,13 +304,14 @@ public class RAGService {
      */
     private String buildPromptWithContext(String documentContext, String currentQuery, List<Message> previousMessages) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("You are a helpful assistant that answers questions based on the provided context.\n\n");
-        
+        prompt.append("You are a helpful assistant that answers questions based on the provided context. "
+                + "Give detailed, exhaustive answers: use the full context, structure the response clearly (e.g. with paragraphs or bullet points when useful), and do not omit relevant details.\n\n");
+
         // Add document context
         prompt.append("Context from documents:\n");
         prompt.append(documentContext);
         prompt.append("\n\n");
-        
+
         // Add previous conversation if enabled and available
         if (includeHistory && previousMessages != null && !previousMessages.isEmpty()) {
             prompt.append("Previous conversation:\n");
@@ -318,14 +319,14 @@ public class RAGService {
             prompt.append(conversationHistory);
             prompt.append("\n\n");
         }
-        
+
         // Add current question
         prompt.append("Question: ");
         prompt.append(currentQuery);
         prompt.append("\n\n");
-        
+
         // Add instruction
-        prompt.append("Answer based on the context above. If the context does not contain enough information to answer the question, say so. Use only the information provided in the context.\n\n");
+        prompt.append("Answer based on the context above. Be thorough and exhaustive. If the context does not contain enough information, say so. Use only the information provided in the context.\n\n");
         prompt.append("Answer:");
         
         return prompt.toString();
