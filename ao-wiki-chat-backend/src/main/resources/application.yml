@@ -73,9 +73,9 @@ ollama:
     model: nomic-embed-text
     dimension: 768
   chat:
-    model: "llama3.2:1b"
+    model: "llama3.2:3b"
     temperature: 0.5
-    num-predict: 4096
+    num-predict: 2048
     timeout-seconds: 120
 
 upload:
@@ -85,7 +85,7 @@ upload:
 rag:
   chunk:
     size: 300
-    overlap: 30
+    overlap: 150
   search:
     top-k: 6
     similarity-threshold: 0.5

@@ -2,7 +2,7 @@
 
 RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD, HTML, PDF) and asking questions about their content through a chat interface. Uses vector embeddings to retrieve relevant information and Google Gemini to generate contextualized responses.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend**: Java 25, Spring Boot 4.x
 - **CLI**: Java 25, Picocli
@@ -39,6 +39,7 @@ Ollama runs as a service (often started automatically after install). The projec
 ```bash
 # Pull the embedding model (used when app.embedding.provider=ollama)
 ollama pull nomic-embed-text
+ollama pull llama3.2:3b
 ```
 
 **3. Configure the backend**
