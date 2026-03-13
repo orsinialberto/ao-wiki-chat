@@ -85,7 +85,7 @@ class VectorAttributeConverterTest {
 
     @Test
     void convertToDatabaseColumnWhen768DimensionsReturnsCorrectString() {
-        // Given: Simulate embedding dimensions (e.g. Gemini 768 or Ollama 768)
+        // Given: Simulate embedding dimensions (e.g. Ollama 768)
         float[] embedding = new float[768];
         for (int i = 0; i < 768; i++) {
             embedding[i] = i * 0.1f;

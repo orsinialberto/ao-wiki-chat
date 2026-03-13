@@ -4,14 +4,14 @@ import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.config.ConfigManager;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDatabaseHealthResponse;
-import com.example.ao_wiki_chat.cli.model.CliGeminiHealthResponse;
+import com.example.ao_wiki_chat.cli.model.CliEmbeddingHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliHealthResponse;
 import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 import picocli.CommandLine;
 
 /**
  * Command for checking system health status.
- * Supports general health check, database check, and Gemini API check.
+ * Supports general health check, database check, and embedding service check.
  */
 @CommandLine.Command(
         name = "health",
@@ -27,11 +27,11 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
     boolean dbOnly;
 
     @CommandLine.Option(
-            names = {"--gemini"},
-            description = "Check Gemini API health only",
+            names = {"--embedding"},
+            description = "Check embedding service health only",
             defaultValue = "false"
     )
-    boolean geminiOnly;
+    boolean embeddingOnly;
 
     @CommandLine.Option(
             names = {"--format", "-f"},
@@ -85,8 +85,8 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
             }
 
             // Validate that only one specific check is requested at a time
-            if (dbOnly && geminiOnly) {
-                throw new IllegalArgumentException("Cannot specify both --db and --gemini options");
+            if (dbOnly && embeddingOnly) {
+                throw new IllegalArgumentException("Cannot specify both --db and --embedding options");
             }
 
             ApiClient apiClient = createApiClient();
@@ -96,9 +96,9 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
                 String output = formatDatabaseHealth(response, format, colorPrinter);
                 System.out.println(output);
                 exitCode = "UP".equalsIgnoreCase(response.status()) ? 0 : 1;
-            } else if (geminiOnly) {
-                CliGeminiHealthResponse response = apiClient.healthGemini();
-                String output = formatGeminiHealth(response, format, colorPrinter);
+            } else if (embeddingOnly) {
+                CliEmbeddingHealthResponse response = apiClient.healthEmbedding();
+                String output = formatEmbeddingHealth(response, format, colorPrinter);
                 System.out.println(output);
                 exitCode = "UP".equalsIgnoreCase(response.status()) ? 0 : 1;
             } else {
@@ -160,18 +160,18 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
     }
 
     /**
-     * Formats Gemini health response.
+     * Formats embedding health response.
      *
-     * @param response     the Gemini health response
+     * @param response     the embedding health response
      * @param format       the output format
      * @param colorPrinter the color printer instance
      * @return formatted output string
      */
-    private String formatGeminiHealth(CliGeminiHealthResponse response, String format, ColorPrinter colorPrinter) {
+    private String formatEmbeddingHealth(CliEmbeddingHealthResponse response, String format, ColorPrinter colorPrinter) {
         if ("json".equalsIgnoreCase(format)) {
-            return formatGeminiHealthJson(response.status(), response.gemini());
+            return formatEmbeddingHealthJson(response.status(), response.embedding());
         }
-        return formatHealthText("Gemini", response.status(), colorPrinter);
+        return formatHealthText("Embedding", response.status(), colorPrinter);
     }
 
     /**
@@ -213,14 +213,14 @@ public class HealthCommand implements Runnable, CommandLine.IExitCodeGenerator {
     }
 
     /**
-     * Formats Gemini health as JSON.
+     * Formats embedding health as JSON.
      *
-     * @param status the status value
-     * @param gemini the gemini value
+     * @param status    the status value
+     * @param embedding the embedding status value
      * @return JSON string
      */
-    private String formatGeminiHealthJson(String status, String gemini) {
-        return String.format("{\"status\":\"%s\",\"gemini\":\"%s\"}", status, gemini);
+    private String formatEmbeddingHealthJson(String status, String embedding) {
+        return String.format("{\"status\":\"%s\",\"embedding\":\"%s\"}", status, embedding);
     }
 
     /**

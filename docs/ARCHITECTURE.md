@@ -18,7 +18,7 @@
 
 ## System Overview
 
-WikiChat is a **Retrieval-Augmented Generation (RAG)** system that enables users to upload documents and query them using natural language. The system uses vector embeddings for semantic search and Google Gemini AI for generating contextualized responses.
+WikiChat is a **Retrieval-Augmented Generation (RAG)** system that enables users to upload documents and query them using natural language. The system uses vector embeddings for semantic search and Ollama (local LLM) for generating contextualized responses.
 
 ### Key Features
 
@@ -71,7 +71,7 @@ The system follows a **layered architecture** pattern:
 
 #### Service Layer
 - **Business Logic**: Document processing, RAG orchestration, chunking
-- **Integration**: External API calls (Gemini), document parsing
+- **Integration**: Embedding and LLM (Ollama), document parsing
 - **Transaction Management**: Ensures data consistency
 
 #### Repository Layer
@@ -122,7 +122,7 @@ The system follows a **layered architecture** pattern:
 ┌─────────────────────────────────────────────────────────┐
 │              Integration Layer                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │   Parser     │  │    Gemini    │  │   Gemini     │   │
+│  │   Parser     │  │   Ollama     │  │   Ollama     │   │
 │  │   Factory    │  │  Embedding   │  │     LLM      │   │
 │  │              │  │   Client     │  │    Client    │   │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘   │
@@ -168,7 +168,7 @@ The system follows a **layered architecture** pattern:
    - Splits text into chunks (300 tokens, 30 overlap)
    - Creates Chunk entities
    ↓
-5. GeminiEmbeddingService.generateEmbedding() [BATCH]
+5. EmbeddingService.generateEmbedding() [BATCH] (Ollama)
    - Generates embeddings for each chunk (768 dimensions)
    - Normalizes embeddings
    ↓
@@ -191,7 +191,7 @@ The system follows a **layered architecture** pattern:
    │  └─ Retrieve previous messages (if any)
    │
    ├─ Step 1: Generate Query Embedding
-   │  └─ GeminiEmbeddingService.generateEmbedding(query)
+   │  └─ EmbeddingService.generateEmbedding(query)
    │
    ├─ Step 2: Vector Search
    │  └─ VectorSearchService.findSimilarChunks(embedding)
@@ -204,7 +204,7 @@ The system follows a **layered architecture** pattern:
    │  └─ Combine: context + conversation history + query
    │
    ├─ Step 5: Generate Answer
-   │  └─ GeminiLLMService.generate(prompt)
+   │  └─ LLMService.generate(prompt)
    │
    ├─ Step 6: Build Source References
    │  └─ Extract chunk metadata for citations
@@ -235,9 +235,8 @@ The system follows a **layered architecture** pattern:
 ### AI/ML
 
 - **LangChain4j 0.36.2**: Java framework for LLM applications
-- **Google Gemini API**: 
-  - `gemini-2.5-flash-lite`: Chat model
-  - `gemini-embedding-001`: Embedding model (768 dimensions via Matryoshka scaling)
+- **Ollama**: Local LLM and embeddings
+  - Chat model (e.g. `llama3.2:3b`) and embedding model (e.g. `nomic-embed-text`, 768 dimensions)
 
 ### Document Processing
 
@@ -346,7 +345,7 @@ Stores text chunks with vector embeddings.
 | `document_id` | UUID | Foreign key → documents |
 | `content` | TEXT | Chunk text content |
 | `chunk_index` | INTEGER | Position in document |
-| `embedding` | vector(768) | Gemini embedding vector |
+| `embedding` | vector(768) | Embedding vector (e.g. Ollama) |
 | `metadata` | JSONB | Additional metadata |
 | `created_at` | TIMESTAMP | Creation timestamp |
 
@@ -528,20 +527,12 @@ Deletes a conversation and all messages.
 ### Health Check
 
 #### `GET /api/health`
-Checks system health (database and Gemini API).
+Checks system health. Use `/api/health/db` and `/api/health/embedding` for database and embedding service checks.
 
 **Response:** `200 OK`
 ```json
 {
-  "status": "UP",
-  "database": {
-    "status": "UP",
-    "details": {...}
-  },
-  "gemini": {
-    "status": "UP",
-    "details": {...}
-  }
+  "status": "UP"
 }
 ```
 
@@ -621,32 +612,30 @@ Performs semantic similarity search.
 - Orders by similarity (most similar first)
 - Limits to top-K results
 
-#### `GeminiEmbeddingService`
-Generates embeddings using Gemini API.
+#### `OllamaEmbeddingService` (implements `EmbeddingService`)
+Generates embeddings using Ollama (e.g. nomic-embed-text).
 
 **Responsibilities:**
-- Batch embedding generation (max 100 items)
-- Embedding normalization
-- Error handling and retries
+- Single and batch embedding generation
+- Embedding dimension reporting
+- Health checks
 
 **Configuration:**
-- Model: `gemini-embedding-001`
-- Dimension: 768 (via Matryoshka scaling)
-- Batch size: 100
+- Model: `ollama.embedding.model` (e.g. nomic-embed-text)
+- Dimension: 768 (must match `rag.vector.dimension`)
 
-#### `GeminiLLMService`
-Generates text responses using Gemini API.
+#### `OllamaLLMService` (implements `LLMService`)
+Generates text responses using Ollama.
 
 **Responsibilities:**
 - Prompt construction
 - LLM API calls
 - Response generation
-- Token usage tracking
+- Health checks
 
 **Configuration:**
-- Model: `gemini-2.5-flash-lite`
-- Temperature: 0.7
-- Max tokens: 512
+- Model: `ollama.chat.model` (e.g. llama3.2:3b)
+- Temperature, max tokens, timeout via `ollama.chat.*`
 
 ### Integration Services
 
@@ -658,42 +647,21 @@ Creates appropriate parser for document type.
 - `HtmlParser`: JSoup-based
 - `PdfParser`: PDFBox-based
 
-#### `GeminiConfig`
-Configures Gemini API clients.
-
-**Configuration:**
-- API key from environment variable
-- Rate limiting
-- Retry logic
+#### `OllamaConfig`
+Configures Ollama embedding and chat model beans (active when `app.embedding.provider=ollama` and `app.chat.provider=ollama`).
 
 ---
 
 ## Integration Points
 
-### Google Gemini API
+### Ollama
 
-#### Embedding API
-- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent`
-- **Model**: `gemini-embedding-001`
-- **Dimension**: 768
-- **Rate Limits**: 
-  - 2M tokens/day (free tier)
-  - 32K tokens/minute
+Embedding and chat are provided by Ollama (local server).
 
-#### Chat API
-- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`
-- **Model**: `gemini-2.5-flash-lite`
-- **Temperature**: 0.7
-- **Max Tokens**: 512
-
-**Authentication:**
-- API key via `GEMINI_API_KEY` environment variable
-- Passed in request headers
-
-**Error Handling:**
-- Exponential backoff retry
-- Rate limit handling
-- Token usage logging
+- **Base URL**: Configurable via `ollama.base-url` (default `http://localhost:11434`)
+- **Embedding model**: e.g. `nomic-embed-text` (768 dimensions)
+- **Chat model**: e.g. `llama3.2:3b`
+- **Configuration**: See `application.yml` under `ollama.*` and [docs/CONFIGURATION.md](CONFIGURATION.md)
 
 ### PostgreSQL + pgvector
 
@@ -735,19 +703,25 @@ spring:
       ddl-auto: validate
 ```
 
-#### Gemini API
+#### Ollama (embedding and chat)
 ```yaml
-gemini:
-  api:
-    key: ${GEMINI_API_KEY}
-  chat:
-    model: gemini-2.5-flash-lite
-    temperature: 0.7
-    max-tokens: 512
+app:
   embedding:
-    model: gemini-embedding-001
+    provider: ollama
+  chat:
+    provider: ollama
+ollama:
+  base-url: http://localhost:11434
+  embedding:
+    model: nomic-embed-text
     dimension: 768
+  chat:
+    model: llama3.2:3b
+    temperature: 0.5
+    num-predict: 2048
+    timeout-seconds: 120
 ```
+See [CONFIGURATION.md](CONFIGURATION.md) for a full guide.
 
 #### RAG Configuration
 ```yaml
@@ -789,7 +763,7 @@ spring:
 
 ### Environment Variables
 
-- `GEMINI_API_KEY`: Google Gemini API key (required)
+No required environment variables for default setup (Ollama on localhost). Optional: override `ollama.base-url` via configuration if Ollama runs elsewhere.
 
 ---
 
@@ -888,7 +862,7 @@ spring:
 
 - **Batch Processing**: Processes up to 100 chunks per batch
 - **Async Processing**: Non-blocking document processing
-- **Rate Limiting**: Respects Gemini API limits
+- **Local execution**: Ollama runs locally; no external API rate limits
 
 ### Database Optimization
 

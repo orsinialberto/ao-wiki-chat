@@ -307,18 +307,18 @@ public class ApiClient {
     }
 
     /**
-     * Checks Gemini API health.
+     * Checks embedding service health.
      *
-     * @return Gemini health response
+     * @return embedding health response
      * @throws ApiException if the request fails
      */
-    public CliGeminiHealthResponse healthGemini() {
+    public CliEmbeddingHealthResponse healthEmbedding() {
         Request request = new Request.Builder()
-                .url(baseUrl + "/api/health/gemini")
+                .url(baseUrl + "/api/health/embedding")
                 .get()
                 .build();
 
-        return executeRequest(request, CliGeminiHealthResponse.class);
+        return executeRequest(request, CliEmbeddingHealthResponse.class);
     }
 
     /**

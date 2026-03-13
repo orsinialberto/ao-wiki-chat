@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,16 +45,10 @@ import com.example.ao_wiki_chat.repository.DocumentRepository;
     "spring.datasource.password=wikichat_password",
     "spring.jpa.hibernate.ddl-auto=validate",
     "spring.jpa.show-sql=false",
-    "gemini.api.key=test-api-key-for-integration-test",
-    "app.chat.provider=gemini"
+    "app.embedding.provider=ollama",
+    "app.chat.provider=ollama"
 })
 class ChunkEmbeddingIntegrationTest {
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        // Set GEMINI_API_KEY environment variable for test
-        registry.add("GEMINI_API_KEY", () -> "test-api-key-for-integration-test");
-    }
 
     @Autowired
     private ChunkRepository chunkRepository;
@@ -101,7 +93,7 @@ class ChunkEmbeddingIntegrationTest {
     @Test
     @Transactional
     void saveChunkWithEmbeddingWhenValidDataPersistsCorrectly() {
-        // Given: Create a chunk with embedding (768 dimensions, e.g. Gemini or Ollama)
+        // Given: Create a chunk with embedding (768 dimensions, e.g. Ollama)
         float[] embedding = new float[768];
         for (int i = 0; i < 768; i++) {
             embedding[i] = (float) (Math.random() * 2 - 1); // Random values between -1 and 1

@@ -2,14 +2,14 @@ package com.example.ao_wiki_chat.service;
 
 /**
  * Service interface for Large Language Model operations.
- * Abstracts the underlying LLM provider (Gemini, OpenAI, Claude, etc.)
+ * Abstracts the underlying LLM provider (e.g. Ollama)
  * to allow easy switching between different implementations.
  */
 public interface LLMService {
-    
+
     /**
      * Generates a text response based on the provided prompt.
-     * Uses the temperature configured in application.yml (gemini.chat.temperature).
+     * Uses the temperature configured in application.yml (e.g. ollama.chat.temperature).
      *
      * @param prompt the input prompt for text generation
      * @return the generated text response

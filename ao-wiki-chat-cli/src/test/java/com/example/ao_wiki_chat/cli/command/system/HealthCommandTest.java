@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 import com.example.ao_wiki_chat.cli.config.ApiClient;
 import com.example.ao_wiki_chat.cli.exception.ApiException;
 import com.example.ao_wiki_chat.cli.model.CliDatabaseHealthResponse;
-import com.example.ao_wiki_chat.cli.model.CliGeminiHealthResponse;
+import com.example.ao_wiki_chat.cli.model.CliEmbeddingHealthResponse;
 import com.example.ao_wiki_chat.cli.model.CliHealthResponse;
 import com.example.ao_wiki_chat.cli.util.ColorPrinter;
 
@@ -129,7 +129,7 @@ class HealthCommandTest {
         assertThat(output).contains("UP");
         verify(apiClient, times(1)).healthDb();
         verify(apiClient, never()).health();
-        verify(apiClient, never()).healthGemini();
+        verify(apiClient, never()).healthEmbedding();
     }
 
     @Test
@@ -159,10 +159,10 @@ class HealthCommandTest {
     }
 
     @Test
-    void runWhenGeminiHealthCheckReturnsUpExitsWithZero() {
+    void runWhenEmbeddingHealthCheckReturnsUpExitsWithZero() {
         // Given
-        CliGeminiHealthResponse response = new CliGeminiHealthResponse("UP", "OK");
-        when(apiClient.healthGemini()).thenReturn(response);
+        CliEmbeddingHealthResponse response = new CliEmbeddingHealthResponse("UP", "available");
+        when(apiClient.healthEmbedding()).thenReturn(response);
 
         HealthCommand command = new HealthCommand() {
             @Override
@@ -174,24 +174,24 @@ class HealthCommandTest {
         CommandLine cmd = new CommandLine(command);
 
         // When
-        int exitCode = cmd.execute("--gemini");
+        int exitCode = cmd.execute("--embedding");
 
         // Then
         assertThat(exitCode).isEqualTo(0);
         String output = outputStream.toString();
         assertThat(output).contains("✓");
-        assertThat(output).contains("Gemini");
+        assertThat(output).contains("Embedding");
         assertThat(output).contains("UP");
-        verify(apiClient, times(1)).healthGemini();
+        verify(apiClient, times(1)).healthEmbedding();
         verify(apiClient, never()).health();
         verify(apiClient, never()).healthDb();
     }
 
     @Test
-    void runWhenGeminiHealthCheckReturnsDownExitsWithOne() {
+    void runWhenEmbeddingHealthCheckReturnsDownExitsWithOne() {
         // Given
-        CliGeminiHealthResponse response = new CliGeminiHealthResponse("DOWN", "ERROR");
-        when(apiClient.healthGemini()).thenReturn(response);
+        CliEmbeddingHealthResponse response = new CliEmbeddingHealthResponse("DOWN", "unavailable");
+        when(apiClient.healthEmbedding()).thenReturn(response);
 
         HealthCommand command = new HealthCommand() {
             @Override
@@ -203,13 +203,13 @@ class HealthCommandTest {
         CommandLine cmd = new CommandLine(command);
 
         // When
-        int exitCode = cmd.execute("--gemini");
+        int exitCode = cmd.execute("--embedding");
 
         // Then
         assertThat(exitCode).isEqualTo(1);
         String output = outputStream.toString();
         assertThat(output).contains("✗");
-        assertThat(output).contains("Gemini");
+        assertThat(output).contains("Embedding");
         assertThat(output).contains("DOWN");
     }
 
@@ -278,10 +278,10 @@ class HealthCommandTest {
     }
 
     @Test
-    void runWhenFormatIsJsonAndGeminiCheckOutputsJson() {
+    void runWhenFormatIsJsonAndEmbeddingCheckOutputsJson() {
         // Given
-        CliGeminiHealthResponse response = new CliGeminiHealthResponse("UP", "OK");
-        when(apiClient.healthGemini()).thenReturn(response);
+        CliEmbeddingHealthResponse response = new CliEmbeddingHealthResponse("UP", "available");
+        when(apiClient.healthEmbedding()).thenReturn(response);
 
         HealthCommand command = new HealthCommand() {
             @Override
@@ -293,15 +293,15 @@ class HealthCommandTest {
         CommandLine cmd = new CommandLine(command);
 
         // When
-        int exitCode = cmd.execute("--gemini", "--format", "json");
+        int exitCode = cmd.execute("--embedding", "--format", "json");
 
         // Then
         assertThat(exitCode).isEqualTo(0);
         String output = outputStream.toString().trim();
         assertThat(output).contains("\"status\"");
-        assertThat(output).contains("\"gemini\"");
+        assertThat(output).contains("\"embedding\"");
         assertThat(output).contains("\"UP\"");
-        assertThat(output).contains("\"OK\"");
+        assertThat(output).contains("\"available\"");
     }
 
     @Test
@@ -325,7 +325,7 @@ class HealthCommandTest {
     }
 
     @Test
-    void runWhenBothDbAndGeminiOptionsSpecifiedThrowsException() {
+    void runWhenBothDbAndEmbeddingOptionsSpecifiedThrowsException() {
         // Given
         HealthCommand command = new HealthCommand() {
             @Override
@@ -337,11 +337,11 @@ class HealthCommandTest {
         CommandLine cmd = new CommandLine(command);
 
         // When
-        int exitCode = cmd.execute("--db", "--gemini");
+        int exitCode = cmd.execute("--db", "--embedding");
 
         // Then
         assertThat(exitCode).isNotEqualTo(0);
-        assertThat(errorStream.toString()).contains("Cannot specify both --db and --gemini");
+        assertThat(errorStream.toString()).contains("Cannot specify both --db and --embedding");
     }
 
     @Test

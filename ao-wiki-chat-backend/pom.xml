@@ -10,7 +10,7 @@
 	</parent>
 	<artifactId>ao-wiki-chat-backend</artifactId>
 	<name>ao-wiki-chat-backend</name>
-	<description>WikiChat Backend Module - RAG System with Gemini AI</description>
+	<description>WikiChat Backend Module - RAG System with Ollama</description>
 
 	<dependencies>
 		<!-- Spring Boot Starters -->
@@ -41,14 +41,10 @@
 			<artifactId>pgvector</artifactId>
 		</dependency>
 
-		<!-- LangChain4j + Gemini -->
+		<!-- LangChain4j + Ollama -->
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
 			<artifactId>langchain4j</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>dev.langchain4j</groupId>
-			<artifactId>langchain4j-google-ai-gemini</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>dev.langchain4j</groupId>

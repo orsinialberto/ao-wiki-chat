@@ -410,9 +410,9 @@ class ApiClientTest {
     }
 
     @Test
-    void healthGeminiWhenSuccessfulReturnsGeminiHealthResponse() throws Exception {
+    void healthEmbeddingWhenSuccessfulReturnsEmbeddingHealthResponse() throws Exception {
         // Given
-        CliGeminiHealthResponse expectedResponse = new CliGeminiHealthResponse("UP", "available");
+        CliEmbeddingHealthResponse expectedResponse = new CliEmbeddingHealthResponse("UP", "available");
 
         mockWebServer.enqueue(new MockResponse()
                 .setResponseCode(200)
@@ -420,16 +420,16 @@ class ApiClientTest {
                 .addHeader("Content-Type", "application/json"));
 
         // When
-        CliGeminiHealthResponse result = apiClient.healthGemini();
+        CliEmbeddingHealthResponse result = apiClient.healthEmbedding();
 
         // Then
         assertThat(result).isNotNull();
         assertThat(result.status()).isEqualTo("UP");
-        assertThat(result.gemini()).isEqualTo("available");
+        assertThat(result.embedding()).isEqualTo("available");
 
         RecordedRequest request = mockWebServer.takeRequest();
         assertThat(request.getMethod()).isEqualTo("GET");
-        assertThat(request.getPath()).isEqualTo("/api/health/gemini");
+        assertThat(request.getPath()).isEqualTo("/api/health/embedding");
     }
 
     @Test

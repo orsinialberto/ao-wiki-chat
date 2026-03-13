@@ -2,7 +2,7 @@ package com.example.ao_wiki_chat.unit.controller;
 
 import com.example.ao_wiki_chat.controller.HealthController;
 import com.example.ao_wiki_chat.model.dto.DatabaseHealthResponse;
-import com.example.ao_wiki_chat.model.dto.GeminiHealthResponse;
+import com.example.ao_wiki_chat.model.dto.EmbeddingHealthResponse;
 import com.example.ao_wiki_chat.model.dto.HealthResponse;
 import com.example.ao_wiki_chat.service.EmbeddingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for HealthController.
- * Tests general health, database connectivity, and Gemini API availability checks.
+ * Tests general health, database connectivity, and embedding service availability checks.
  */
 @ExtendWith(MockitoExtension.class)
 class HealthControllerTest {
@@ -37,7 +37,7 @@ class HealthControllerTest {
     private DataSource dataSource;
 
     @Mock
-    private EmbeddingService geminiEmbeddingService;
+    private EmbeddingService embeddingService;
 
     @Mock
     private Connection connection;
@@ -52,7 +52,7 @@ class HealthControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new HealthController(dataSource, geminiEmbeddingService);
+        controller = new HealthController(dataSource, embeddingService);
     }
 
     @Test
@@ -138,51 +138,51 @@ class HealthControllerTest {
     }
 
     @Test
-    void geminiHealthWhenServiceHealthyReturnsOkWithAvailableStatus() {
+    void embeddingHealthWhenServiceHealthyReturnsOkWithAvailableStatus() {
         // Given
-        when(geminiEmbeddingService.isHealthy()).thenReturn(true);
+        when(embeddingService.isHealthy()).thenReturn(true);
 
         // When
-        ResponseEntity<GeminiHealthResponse> response = controller.geminiHealth();
+        ResponseEntity<EmbeddingHealthResponse> response = controller.embeddingHealth();
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().status()).isEqualTo("UP");
-        assertThat(response.getBody().gemini()).isEqualTo("available");
-        verify(geminiEmbeddingService).isHealthy();
+        assertThat(response.getBody().embedding()).isEqualTo("available");
+        verify(embeddingService).isHealthy();
     }
 
     @Test
-    void geminiHealthWhenServiceUnhealthyReturnsServiceUnavailable() {
+    void embeddingHealthWhenServiceUnhealthyReturnsServiceUnavailable() {
         // Given
-        when(geminiEmbeddingService.isHealthy()).thenReturn(false);
+        when(embeddingService.isHealthy()).thenReturn(false);
 
         // When
-        ResponseEntity<GeminiHealthResponse> response = controller.geminiHealth();
+        ResponseEntity<EmbeddingHealthResponse> response = controller.embeddingHealth();
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().status()).isEqualTo("DOWN");
-        assertThat(response.getBody().gemini()).isEqualTo("unavailable");
-        verify(geminiEmbeddingService).isHealthy();
+        assertThat(response.getBody().embedding()).isEqualTo("unavailable");
+        verify(embeddingService).isHealthy();
     }
 
     @Test
-    void geminiHealthWhenServiceThrowsExceptionReturnsServiceUnavailable() {
+    void embeddingHealthWhenServiceThrowsExceptionReturnsServiceUnavailable() {
         // Given
-        when(geminiEmbeddingService.isHealthy())
+        when(embeddingService.isHealthy())
                 .thenThrow(new RuntimeException("Service unavailable"));
 
         // When
-        ResponseEntity<GeminiHealthResponse> response = controller.geminiHealth();
+        ResponseEntity<EmbeddingHealthResponse> response = controller.embeddingHealth();
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().status()).isEqualTo("DOWN");
-        assertThat(response.getBody().gemini()).isEqualTo("unavailable");
-        verify(geminiEmbeddingService).isHealthy();
+        assertThat(response.getBody().embedding()).isEqualTo("unavailable");
+        verify(embeddingService).isHealthy();
     }
 }

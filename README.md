@@ -1,13 +1,13 @@
-# WikiChat - RAG System with Java and Gemini
+# WikiChat - RAG System with Java and Ollama
 
-RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD, HTML, PDF) and asking questions about their content through a chat interface. Uses vector embeddings to retrieve relevant information and Google Gemini to generate contextualized responses.
+RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD, HTML, PDF) and asking questions about their content through a chat interface. Uses vector embeddings to retrieve relevant information and Ollama (local LLM) to generate contextualized responses.
 
 ## Tech Stack
 
 - **Backend**: Java 25, Spring Boot 4.x
 - **CLI**: Java 25, Picocli
 - **Database**: PostgreSQL 15 + pgvector
-- **AI/ML**: LangChain4j, Google Gemini API
+- **AI/ML**: LangChain4j, Ollama
 - **Containerization**: Docker, Docker Compose
 
 ---
@@ -19,11 +19,11 @@ RAG (Retrieval-Augmented Generation) system that allows uploading documents (MD,
 - Docker and Docker Compose installed
 - Java 25 installed
 - Maven installed
-- **Ollama** (optional): required if you use local embeddings; see [Ollama setup](#ollama-local-embeddings) below.
+- **Ollama**: required for embeddings and chat; see [Ollama setup](#ollama-local-embeddings) below.
 
-### Ollama (local embeddings)
+### Ollama (embeddings and chat)
 
-To use **local embeddings** instead of Gemini, you need Ollama running and the embedding model installed.
+Ollama must be running with the embedding and chat models installed.
 
 **1. Install Ollama**
 
@@ -42,19 +42,7 @@ ollama pull nomic-embed-text
 ollama pull llama3.2:3b
 ```
 
-**3. Configure the backend**
-
-In `ao-wiki-chat-backend/src/main/resources/application.yml` set:
-
-```yaml
-app:
-  embedding:
-    provider: ollama
-```
-
-Optional: adjust `ollama.base-url` if Ollama is not on `http://localhost:11434`.
-
-Without Ollama (and with `provider: gemini`), the backend uses the Google Gemini API for embeddings; set `GEMINI_API_KEY` in that case.
+Optional: adjust `ollama.base-url` in `application.yml` if Ollama is not on `http://localhost:11434`. See [Configuration guide](docs/CONFIGURATION.md) for all options.
 
 ### 1. Database Startup
 
@@ -67,22 +55,12 @@ docker-compose ps
 
 ```
 
-### 2. Environment Variables
-
-Spring Boot reads environment variables from your system environment:
-
-**Export in your shell session**
-```bash
-export GEMINI_API_KEY=your_api_key_here
-```
-
-
-### 3. Download dependencies
+### 2. Download dependencies
 ```bash
 ./mvnw clean install
 ```
 
-### Run from project root, specifying the backend module
+### 3. Run from project root, specifying the backend module
 ```bash
 ./mvnw spring-boot:run -pl ao-wiki-chat-backend
 ```
@@ -166,6 +144,7 @@ docker exec -it wikichat-postgres psql -U wikichat_user -d wikichat -c "SELECT C
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture and technical design
+- [docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Guide to configuring application.yml
 - [docs/CHUNKING_LOGIC.md](docs/CHUNKING_LOGIC.md) - Chunking algorithm explained
 
 ---

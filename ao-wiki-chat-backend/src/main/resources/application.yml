@@ -40,32 +40,12 @@ spring:
 server:
   port: 8080
 
-# Embedding provider: "gemini" | "ollama"
-# Chat provider: "gemini" | "ollama" (independent from embedding)
+# Embedding and chat provider (ollama)
 app:
   embedding:
     provider: ollama
   chat:
     provider: ollama
-
-gemini:
-  api:
-    # Optional: omit or set GEMINI_API_KEY for Gemini chat. If unset, app starts but chat will fail at first use.
-    key: ${GEMINI_API_KEY:}
-  chat:
-    model: gemini-2.5-flash-lite
-    temperature: 0.5
-    max-tokens: 4096
-  embedding:
-    model: gemini-embedding-001
-    dimension: 768
-    batch-size: 25
-    batch-delay-ms: 15000
-    max-retries: 5
-    retry-base-delay-ms: 10000
-  rate-limit:
-    requests-per-minute: 10
-    tokens-per-day: 2000000
 
 ollama:
   base-url: http://localhost:11434
@@ -124,7 +104,6 @@ logging:
     org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     dev.langchain4j: DEBUG
-    # Avoid verbose 429/rate-limit logs: RetryUtils logs full exception body + stack at WARN; we log a single line in GeminiEmbeddingService
     dev.langchain4j.internal.RetryUtils: ERROR
   pattern:
     console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){blue} %clr([%5p]){highlight} %clr(%-40.40logger{39}){cyan} : %m%n"

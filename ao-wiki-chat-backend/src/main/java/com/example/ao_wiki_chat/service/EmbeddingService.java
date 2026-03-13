@@ -6,7 +6,7 @@ import com.example.ao_wiki_chat.exception.EmbeddingException;
 
 /**
  * Contract for services that generate vector embeddings from text.
- * Implementations may use different providers (e.g. Gemini, OpenAI) and
+ * Implementations may use different providers (e.g. Ollama) and
  * support single or batch embedding generation.
  */
 public interface EmbeddingService {

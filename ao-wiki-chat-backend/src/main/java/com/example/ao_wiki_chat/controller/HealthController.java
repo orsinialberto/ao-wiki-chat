@@ -1,7 +1,7 @@
 package com.example.ao_wiki_chat.controller;
 
 import com.example.ao_wiki_chat.model.dto.DatabaseHealthResponse;
-import com.example.ao_wiki_chat.model.dto.GeminiHealthResponse;
+import com.example.ao_wiki_chat.model.dto.EmbeddingHealthResponse;
 import com.example.ao_wiki_chat.model.dto.HealthResponse;
 import com.example.ao_wiki_chat.service.EmbeddingService;
 import org.slf4j.Logger;
@@ -30,24 +30,24 @@ public class HealthController {
     private static final String STATUS_DOWN = "DOWN";
     private static final String DATABASE_CONNECTED = "connected";
     private static final String DATABASE_DISCONNECTED = "disconnected";
-    private static final String GEMINI_AVAILABLE = "available";
-    private static final String GEMINI_UNAVAILABLE = "unavailable";
+    private static final String EMBEDDING_AVAILABLE = "available";
+    private static final String EMBEDDING_UNAVAILABLE = "unavailable";
 
     private final DataSource dataSource;
-    private final EmbeddingService geminiEmbeddingService;
+    private final EmbeddingService embeddingService;
 
     /**
      * Constructs a HealthController with required dependencies.
      *
      * @param dataSource the data source for database connectivity checks
-     * @param geminiEmbeddingService the embedding service for API availability checks
+     * @param embeddingService the embedding service for availability checks
      */
     public HealthController(
             DataSource dataSource,
-            EmbeddingService geminiEmbeddingService
+            EmbeddingService embeddingService
     ) {
         this.dataSource = dataSource;
-        this.geminiEmbeddingService = geminiEmbeddingService;
+        this.embeddingService = embeddingService;
     }
 
     /**
@@ -91,33 +91,33 @@ public class HealthController {
     }
 
     /**
-     * Checks Gemini API availability.
-     * Makes a simple API call to verify the service is accessible.
+     * Checks embedding service availability.
+     * Verifies that the configured embedding provider (e.g. Ollama) is accessible.
      *
-     * @return 200 OK if API is accessible, 503 Service Unavailable if API is down
+     * @return 200 OK if embedding service is healthy, 503 Service Unavailable otherwise
      */
-    @GetMapping("/gemini")
-    public ResponseEntity<GeminiHealthResponse> geminiHealth() {
-        log.debug("Gemini API health check requested");
+    @GetMapping("/embedding")
+    public ResponseEntity<EmbeddingHealthResponse> embeddingHealth() {
+        log.debug("Embedding service health check requested");
 
         try {
-            boolean isHealthy = geminiEmbeddingService.isHealthy();
+            boolean isHealthy = embeddingService.isHealthy();
 
             if (isHealthy) {
-                log.debug("Gemini API health check successful");
+                log.debug("Embedding service health check successful");
                 return ResponseEntity.ok(
-                        new GeminiHealthResponse(STATUS_UP, GEMINI_AVAILABLE)
+                        new EmbeddingHealthResponse(STATUS_UP, EMBEDDING_AVAILABLE)
                 );
             } else {
-                log.warn("Gemini API health check returned unhealthy status");
+                log.warn("Embedding service health check returned unhealthy status");
                 return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .body(new GeminiHealthResponse(STATUS_DOWN, GEMINI_UNAVAILABLE));
+                        .body(new EmbeddingHealthResponse(STATUS_DOWN, EMBEDDING_UNAVAILABLE));
             }
 
         } catch (Exception e) {
-            log.error("Gemini API health check failed: {}", e.getMessage(), e);
+            log.error("Embedding service health check failed: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(new GeminiHealthResponse(STATUS_DOWN, GEMINI_UNAVAILABLE));
+                    .body(new EmbeddingHealthResponse(STATUS_DOWN, EMBEDDING_UNAVAILABLE));
         }
     }
 }
