@@ -20,8 +20,8 @@ import dev.langchain4j.model.output.Response;
 /**
  * Ollama implementation of EmbeddingService.
  * Uses LangChain4j's OllamaEmbeddingModel (e.g. nomic-embed-text).
- * Vectors are padded to the configured dimension (1024) when the model
- * returns fewer dimensions (e.g. nomic-embed-text returns 768).
+ * Vectors are padded to the configured dimension (768) when the model
+ * returns fewer dimensions.
  */
 @Service("ollamaEmbeddingService")
 @ConditionalOnProperty(name = "app.embedding.provider", havingValue = "ollama")
@@ -34,7 +34,7 @@ public class OllamaEmbeddingService implements EmbeddingService {
 
     public OllamaEmbeddingService(
             @Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel,
-            @Value("${ollama.embedding.dimension:1024}") int embeddingDimension
+            @Value("${ollama.embedding.dimension:768}") int embeddingDimension
     ) {
         this.embeddingModel = embeddingModel;
         this.embeddingDimension = embeddingDimension;

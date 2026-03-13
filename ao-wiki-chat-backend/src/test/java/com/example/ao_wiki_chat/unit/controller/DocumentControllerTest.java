@@ -364,7 +364,7 @@ class DocumentControllerTest {
                 .document(document)
                 .content("Chunk 1 content")
                 .chunkIndex(0)
-                .embedding(new float[1024])
+                .embedding(new float[768])
                 .createdAt(createdAt)
                 .build();
 
@@ -373,7 +373,7 @@ class DocumentControllerTest {
                 .document(document)
                 .content("Chunk 2 content")
                 .chunkIndex(1)
-                .embedding(new float[1024])
+                .embedding(new float[768])
                 .createdAt(createdAt.plusMinutes(1))
                 .build();
 

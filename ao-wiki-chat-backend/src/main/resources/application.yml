@@ -58,7 +58,7 @@ gemini:
     max-tokens: 4096
   embedding:
     model: gemini-embedding-001
-    dimension: 1024
+    dimension: 768
     batch-size: 25
     batch-delay-ms: 15000
     max-retries: 5
@@ -71,7 +71,7 @@ ollama:
   base-url: http://localhost:11434
   embedding:
     model: nomic-embed-text
-    dimension: 1024
+    dimension: 768
   chat:
     model: "llama3.2:1b"
     temperature: 0.5
@@ -90,7 +90,7 @@ rag:
     top-k: 6
     similarity-threshold: 0.5
   vector:
-    dimension: 1024
+    dimension: 768
     distance-metric: cosine
   # Reranker: second-stage ranking for better context quality (optional)
   reranker:
@@ -121,7 +121,7 @@ logging:
     root: INFO
     com.example.ao_wiki_chat: DEBUG
     org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     dev.langchain4j: DEBUG
     # Avoid verbose 429/rate-limit logs: RetryUtils logs full exception body + stack at WARN; we log a single line in GeminiEmbeddingService

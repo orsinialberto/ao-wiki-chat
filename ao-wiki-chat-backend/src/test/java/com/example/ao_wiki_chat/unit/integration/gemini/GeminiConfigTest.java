@@ -27,7 +27,7 @@ class GeminiConfigTest {
         ReflectionTestUtils.setField(geminiConfig, "temperature", 0.7);
         ReflectionTestUtils.setField(geminiConfig, "maxTokens", 2048);
         ReflectionTestUtils.setField(geminiConfig, "embeddingModel", "gemini-embedding-001");
-        ReflectionTestUtils.setField(geminiConfig, "embeddingDimension", 1024);
+        ReflectionTestUtils.setField(geminiConfig, "embeddingDimension", 768);
     }
 
     @Test

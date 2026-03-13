@@ -32,7 +32,7 @@ CREATE TABLE chunks (
     document_id UUID NOT NULL,
     content TEXT NOT NULL,
     chunk_index INTEGER NOT NULL,
-    embedding vector(1024),  -- Embedding dimension (Gemini 1024 or Ollama nomic-embed-text padded to 1024)
+    embedding vector(768),  -- Embedding dimension (e.g. Gemini 768 or Ollama nomic-embed-text 768)
     metadata JSONB,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     

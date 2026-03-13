@@ -29,7 +29,7 @@ import dev.langchain4j.model.output.Response;
 @ExtendWith(MockitoExtension.class)
 class OllamaEmbeddingServiceTest {
 
-    private static final int EMBEDDING_DIMENSION = 1024;
+    private static final int EMBEDDING_DIMENSION = 768;
 
     @Mock
     private EmbeddingModel embeddingModel;
@@ -156,7 +156,7 @@ class OllamaEmbeddingServiceTest {
     }
 
     @Test
-    void generateEmbeddingsWhenModelReturns768PadsEachTo1024() {
+    void generateEmbeddingsWhenModelReturns768ReturnsAsIs() {
         List<String> texts = Arrays.asList("A", "B");
         float[] vec768 = new float[768];
         vec768[0] = 1.0f;
@@ -171,8 +171,6 @@ class OllamaEmbeddingServiceTest {
         assertThat(results.get(0)).hasSize(EMBEDDING_DIMENSION);
         assertThat(results.get(0)[0]).isEqualTo(1.0f);
         assertThat(results.get(0)[767]).isEqualTo(0.0f);
-        assertThat(results.get(0)[768]).isEqualTo(0.0f);
-        assertThat(results.get(0)[EMBEDDING_DIMENSION - 1]).isEqualTo(0.0f);
     }
 
     @Test

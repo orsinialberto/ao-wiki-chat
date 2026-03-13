@@ -268,8 +268,8 @@ class DocumentServiceTest {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
         List<float[]> embeddings = Arrays.asList(
-                new float[1024], // Mock embeddings with correct dimension
-                new float[1024]
+                new float[768], // Mock embeddings with correct dimension
+                new float[768]
         );
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -283,13 +283,13 @@ class DocumentServiceTest {
                         .document(document)
                         .content("Chunk 1")
                         .chunkIndex(0)
-                        .embedding(new float[1024])
+                        .embedding(new float[768])
                         .build(),
                 Chunk.builder()
                         .document(document)
                         .content("Chunk 2")
                         .chunkIndex(1)
-                        .embedding(new float[1024])
+                        .embedding(new float[768])
                         .build()
         );
         when(chunkRepository.saveAll(any(List.class))).thenReturn(savedChunks);
@@ -362,7 +362,7 @@ class DocumentServiceTest {
     void processDocumentWhenEmbeddingCountMismatchThrowsException() throws IOException {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
-        float[] singleEmbedding = new float[1024];
+        float[] singleEmbedding = new float[768];
         List<float[]> embeddings = Arrays.asList(singleEmbedding); // Only 1 embedding
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -487,8 +487,8 @@ class DocumentServiceTest {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1", "Chunk 2");
         List<float[]> embeddings = Arrays.asList(
-                new float[1024],
-                new float[1024]
+                new float[768],
+                new float[768]
         );
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -608,7 +608,7 @@ class DocumentServiceTest {
     void deleteFileFromStorageWhenIOExceptionOccursLogsWarningAndDoesNotFail() throws IOException {
         // Given
         List<String> chunks = Arrays.asList("Chunk 1");
-        List<float[]> embeddings = Arrays.asList(new float[1024]);
+        List<float[]> embeddings = Arrays.asList(new float[768]);
 
         when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
         when(parserFactory.getParser("application/pdf")).thenReturn(documentParser);
